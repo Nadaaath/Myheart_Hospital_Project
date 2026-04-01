@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql" 
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// MODÈLES POUR CATALOG-SERVICE SEULEMENT
+// ============================================
+
+model MedicalService {
+  id            Int      @id @default(autoincrement())
+  code          String   @unique // Code NGAP (C100, D216, etc.)
+  name          String
+  description   String?
+  department    String   // GENERAL, SPECIALIST, RADIOLOGY, etc.
+  category      String?  // PEAU, OPHTALMO, CHIRURGIE, etc.
+  
+  // Type de tarification
+  pricing_type  String   // DIRECT, COEFFICIENT, PACKAGE
+  direct_price  Float?   // Pour DIRECT et PACKAGE
+  coefficient   Float?   // Pour COEFFICIENT
+  letter        String?  // C, Cs, K, Z, etc. (pour COEFFICIENT)
+  
+  @@map("medicalservice")
+  // Métadonnées
+  is_active     Boolean  @default(true)
+  is_bookable  Boolean  @default(false)
+
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  
+  // Relations internes seulement
+  package_rules PackageRule[]
+  source String @default("NGAP")
+}
+
+model LetterTariff {
+  id          Int      @id @default(autoincrement())
+  letter      String   @unique // C, Cs, K, Z, B, etc.
+  value       Float    // 40, 60, 7.5, 1.5, etc.
+  description String?
+  @@map("lettertariff")
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
+
+// Forfaits chirurgicaux
+model SurgicalPackage {
+  id              Int      @id @default(autoincrement())
+  category        String   // K20-K24, K25-K29, etc.
+  min_coefficient Float
+  max_coefficient Float
+  fixed_price     Float    // Prix forfaitaire
+  description     String?
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  // Relations
+  rules           PackageRule[]
+}
+
+// Règles pour les packages
+model PackageRule {
+  id              Int      @id @default(autoincrement())
+  service_id      Int
+  package_id      Int?
+  
+  // Règle: si ces conditions sont remplies
+  min_coefficient Float?
+  max_coefficient Float?
+  category        String?
+  letter          String?
+  
+  // Alors ce prix
+  fixed_price     Float?
+  
+  created_at      DateTime @default(now())
+  
+  // Relations
+  service         MedicalService @relation(fields: [service_id], references: [id])
+  package         SurgicalPackage? @relation(fields: [package_id], references: [id])
+}
+
+// Majorations (nuit, dimanche, jours fériés)
+model Majoration {
+  id              Int      @id @default(autoincrement())
+  name            String   // NUIT, DIMANCHE, FERIE, URGENCE
+  type            String   // PERCENTAGE ou FIXED
+  
+  // Pour actes >= 15
+  percentage      Float?   // 10 pour nuit, 5 pour dimanche
+  max_multiplier  Float?   // 15 pour nuit, 8 pour dimanche (× lettre)
+  
+  // Pour actes < 15
+  fixed_amount    Float?   // 15 pour nuit, 10 pour dimanche
+  
+  is_active       Boolean  @default(true)
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+}
+
+// Règles d'anesthésie
+model AnesthesiaRule {
+  id              Int      @id @default(autoincrement())
+  
+  // Pour quels types d'actes
+  min_coefficient Float?
+  max_coefficient Float?
+  category        String?
+  
+  // Règle
+  base_coefficient Float   // 15, 20, 25, etc.
+  
+  // Majorations spéciales
+  child_majoration     Float? // +K10 pour enfants < 6 ans
+  elderly_majoration   Float? // +K10 pour > 80 ans
+  
+  // Soins inclus
+  includes_preop_days  Int     @default(1)
+  includes_postop_days Int     @default(15)
+  
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+}
+
+// ============================================
+// CORRECTION: Plus de String[] - on utilise Json
+// ============================================
+
+// Pour stocker les devis/estimations
+model PriceQuote {
+  id              String   @id @default(uuid())
+  quote_number    String   @unique
+  
+  // Données de la requête - en Json au lieu de String[]
+  consultation_type String
+  procedure_codes  Json     // ✅ Stocké comme JSON (ex: ["C100", "D216"])
+  options          Json?    // Options (isNight, isSunday, etc.)
+  
+  // Résultats
+  total_price      Float
+  breakdown        Json     // Détail complet du calcul
+  ngap_references  Json     // ✅ Stocké comme JSON (ex: ["Article 9", "Article 12"])
+  
+  // Métadonnées (sans relations externes)
+  patient_external_id String? // ID depuis patient-service (pas de relation)
+  appointment_external_id String? // ID depuis appointment-service
+  
+  created_at      DateTime @default(now())
+  expires_at      DateTime? // Devis valable 30 jours
+}
+
+// Pour les tests de laboratoire (de vos Excel)
+model LabTest {
+  id                     Int      @id @default(autoincrement())
+  code                   String   @unique
+  name                   String
+  description            String?
+  category               String?
+  source                 String   @default("NGAP")
+
+  price                  Float
+  b_coefficient          Float?
+  conventional_price     Float?
+  non_conventional_price Float?
+  is_ngap                Boolean  @default(false)
+
+  is_active              Boolean  @default(true)
+  @@map("labtest")
+
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+}
+

@@ -1,0 +1,21 @@
+{
+  "name": "myheart",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "frontend": "cd myheart-frontend && npm run dev",
+    "gateway": "cd services/api-gateway && npm run dev",
+    "auth": "cd services/auth-service && npm run dev",
+    "doctor": "cd services/doctor-service && npm run dev",
+    "patient": "cd services/patient-service && npm run dev",
+    "appointments": "cd services/appointment-service && npm run dev",
+    "billing": "cd services/billing-service && npm run dev",
+    "catalog": "cd services/catalog-service && npm run dev",
+    "consultations": "cd services/consultation-records-service && npm run dev",
+    "labs": "cd services/lab-service && npm run dev",
+    "dev": "concurrently \"npm run frontend\" \"npm run gateway\" \"npm run auth\" \"npm run doctor\" \"npm run patient\" \"npm run appointments\" \"npm run billing\" \"npm run catalog\" \"npm run consultations\" \"npm run labs\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

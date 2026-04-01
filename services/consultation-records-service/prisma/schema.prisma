@@ -1,0 +1,24 @@
+generator client {
+ provider = "prisma-client-js"
+}
+
+datasource db {
+ provider = "mysql"
+ url      = env("DATABASE_URL")
+}
+
+model ConsultationRecord {
+  id             Int      @id @default(autoincrement())
+  appointment_id Int
+  doctor_id      Int
+  patient_id     Int
+
+  clinical_notes String?
+  diagnosis      String?
+  prescriptions  Json?
+  notes          String?
+  @@map("consultationrecord")
+
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+}

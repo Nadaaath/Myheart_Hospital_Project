@@ -1,0 +1,172 @@
+version: "3.9"
+
+services:
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+    container_name: api-gateway
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./services/api-gateway/.env
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:5001
+      PATIENT_SERVICE_URL: http://patient-service:5002
+      DOCTOR_SERVICE_URL: http://doctor-service:5003
+      APPOINTMENT_SERVICE_URL: http://appointment-service:5004
+      CONSULTATION_SERVICE_URL: http://consultation-records-service:5005
+      LAB_SERVICE_URL: http://lab-service:5006
+      BILLING_SERVICE_URL: http://billing-service:5007
+      CATALOG_SERVICE_URL: http://catalog-service:5008
+    depends_on:
+      - auth-service
+      - patient-service
+      - doctor-service
+      - appointment-service
+      - consultation-records-service
+      - lab-service
+      - billing-service
+      - catalog-service
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+      args:
+        DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_auth
+    container_name: auth-service
+    ports:
+      - "5001:5001"
+    env_file:
+      - ./services/auth-service/.env
+    environment:
+      DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_auth
+    depends_on:
+      - mysql
+
+  patient-service:
+    build:
+      context: ./services/patient-service
+      args:
+        DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_patient
+    container_name: patient-service
+    ports:
+      - "5002:5002"
+    env_file:
+      - ./services/patient-service/.env
+    environment:
+      DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_patient
+    depends_on:
+      - mysql
+
+  doctor-service:
+    build:
+      context: ./services/doctor-service
+      args:
+        DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_doctor
+    container_name: doctor-service
+    ports:
+      - "5003:5003"
+    env_file:
+      - ./services/doctor-service/.env
+    environment:
+      DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_doctor
+    depends_on:
+      - mysql
+
+  appointment-service:
+    build:
+      context: ./services/appointment-service
+      args:
+        DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_appointment
+    container_name: appointment-service
+    ports:
+      - "5004:5004"
+    env_file:
+      - ./services/appointment-service/.env
+    environment:
+      DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_appointment
+    depends_on:
+      - mysql
+
+  consultation-records-service:
+    build:
+      context: ./services/consultation-records-service
+      args:
+        DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_medical
+    container_name: consultation-records-service
+    ports:
+      - "5005:5005"
+    env_file:
+      - ./services/consultation-records-service/.env
+    environment:
+      DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_medical
+    depends_on:
+      - mysql
+
+  lab-service:
+    build:
+      context: ./services/lab-service
+    container_name: lab-service
+    ports:
+      - "5006:5006"
+    env_file:
+      - ./services/lab-service/.env
+    environment:
+      MONGO_URI: mongodb://mongodb:27017/myheart_lab
+    depends_on:
+      - mongodb
+
+  billing-service:
+    build:
+      context: ./services/billing-service
+      args:
+        DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_billing
+    container_name: billing-service
+    ports:
+      - "5007:5007"
+    env_file:
+      - ./services/billing-service/.env
+    environment:
+      DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_billing
+    depends_on:
+      - mysql
+
+  catalog-service:
+    build:
+      context: ./services/catalog-service
+      args:
+        DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_catalog
+    container_name: catalog-service
+    ports:
+      - "5008:5008"
+    env_file:
+      - ./services/catalog-service/.env
+    environment:
+      DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_catalog
+    depends_on:
+      - mysql
+
+  mysql:
+    image: mysql:8.0
+    container_name: myheart-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: Red24Red
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db-init/mysql:/docker-entrypoint-initdb.d
+
+  mongodb:
+    image: mongo:7
+    container_name: myheart-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mysql_data:
+  mongo_data:

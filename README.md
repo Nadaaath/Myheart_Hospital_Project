@@ -135,3 +135,23 @@ Service     Service       Service     Service       Records     Service  Service
 Databases:
 - MySQL: auth, patient, doctor, appointment, medical, billing, catalog
 - MongoDB: lab
+myheart/
+├── services/
+│   ├── api-gateway/
+│   ├── auth-service/
+│   ├── patient-service/
+│   ├── doctor-service/
+│   ├── appointment-service/
+│   ├── consultation-records-service/
+│   ├── billing-service/
+│   ├── catalog-service/
+│   └── lab-service/
+│
+├── frontend/
+│
+├── db-init/
+│   └── mysql/
+│
+├── docker-compose.yml
+├── README.md
+└── .gitignore

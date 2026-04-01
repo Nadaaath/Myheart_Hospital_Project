@@ -135,6 +135,9 @@ Service     Service       Service     Service       Records     Service  Service
 Databases:
 - MySQL: auth, patient, doctor, appointment, medical, billing, catalog
 - MongoDB: lab
+
+### Project structure
+
 myheart/
 ├── services/
 │   ├── api-gateway/

@@ -132,15 +132,15 @@ Frontend
    v
 API Gateway
    |
-   +-----------------------------------------------------------------------+
-   |            |            |            |            |         |         |
-   v            v            v            v            v         v         v
-Auth        Patient       Doctor     Appointment   Consultation Billing  Catalog
-Service     Service       Service     Service       Records     Service  Service
-                                                 Service
-                                                                    |
-                                                                    v
-                                                                Lab Service
+   +--------------------------------------------------------------------------------------+
+   |            |            |            |                    |            |             |
+   v            v            v            v                    v            v             v
+Auth        Patient       Doctor     Appointment     Consultation       Billing       Catalog
+Service     Service       Service     Service         Records Service   Service       Service
+                                                                                       |
+                                                                                       |
+                                                                                       v
+                                                                                  Lab Service
 
 Databases:
 - MySQL: auth, patient, doctor, appointment, medical, billing, catalog

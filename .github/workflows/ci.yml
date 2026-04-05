@@ -1,0 +1,107 @@
+name: MyHeart CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  frontend-build:
+    name: Frontend build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+  compose-validate:
+    name: Validate docker compose
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate compose file
+        run: docker compose config
+
+  docker-build:
+    name: Build Docker images
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: auth-service
+            path: ./services/auth-service
+            database_url: mysql://root:dummy@mysql:3306/myheart_auth
+
+          - service: patient-service
+            path: ./services/patient-service
+            database_url: mysql://root:dummy@mysql:3306/myheart_patient
+
+          - service: doctor-service
+            path: ./services/doctor-service
+            database_url: mysql://root:dummy@mysql:3306/myheart_doctor
+
+          - service: appointment-service
+            path: ./services/appointment-service
+            database_url: mysql://root:dummy@mysql:3306/myheart_appointment
+
+          - service: consultation-records-service
+            path: ./services/consultation-records-service
+            database_url: mysql://root:dummy@mysql:3306/myheart_medical
+
+          - service: billing-service
+            path: ./services/billing-service
+            database_url: mysql://root:dummy@mysql:3306/myheart_billing
+
+          - service: catalog-service
+            path: ./services/catalog-service
+            database_url: mysql://root:dummy@mysql:3306/myheart_catalog
+
+          - service: api-gateway
+            path: ./services/api-gateway
+            database_url: ""
+
+          - service: lab-service
+            path: ./services/lab-service
+            database_url: ""
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image with DATABASE_URL
+        if: matrix.database_url != ''
+        run: |
+          docker build \
+            --build-arg DATABASE_URL="${{ matrix.database_url }}" \
+            -t myheart-${{ matrix.service }}:ci \
+            ${{ matrix.path }}
+
+      - name: Build Docker image without DATABASE_URL
+        if: matrix.database_url == ''
+        run: |
+          docker build \
+            -t myheart-${{ matrix.service }}:ci \
+            ${{ matrix.path }}

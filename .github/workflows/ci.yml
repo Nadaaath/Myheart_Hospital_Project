@@ -105,3 +105,34 @@ jobs:
           docker build \
             -t myheart-${{ matrix.service }}:ci \
             ${{ matrix.path }}
+  smoke-test:
+    name: Smoke test services
+    runs-on: ubuntu-latest
+    needs:
+      - frontend-build
+      - compose-validate
+      - docker-build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Start services
+        run: docker compose up -d --build
+
+      - name: Wait for services to boot
+        run: sleep 25
+
+      - name: Check auth service
+        run: curl -f http://localhost:5001/auth/test
+
+      - name: Check gateway
+        run: curl -f http://localhost:5000/
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Shut down services
+        if: always()
+        run: docker compose down -v

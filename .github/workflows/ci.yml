@@ -120,8 +120,18 @@ jobs:
       - name: Start services
         run: docker compose up -d --build
 
-      - name: Wait for services to boot
-        run: sleep 25
+      - name: Wait for gateway to become ready
+        run: |
+          for i in {1..30}; do
+            if curl -fs http://localhost:5000/ > /dev/null; then
+              echo "Gateway is ready"
+              exit 0
+            fi
+            echo "Waiting for gateway..."
+            sleep 2
+          done
+          echo "Gateway did not become ready in time"
+          exit 1    
 
       - name: Check gateway root
         run: curl -f http://localhost:5000/

@@ -26,11 +26,11 @@ jobs:
           cache-dependency-path: myheart-frontend/package-lock.json
 
       - name: Install frontend dependencies
-        working-directory: frontend
+        working-directory: myheart-frontend
         run: npm ci
 
       - name: Build frontend
-        working-directory: frontend
+        working-directory: myheart-frontend
         run: npm run build
 
   compose-validate:

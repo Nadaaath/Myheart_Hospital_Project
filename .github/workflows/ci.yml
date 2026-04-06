@@ -123,11 +123,18 @@ jobs:
       - name: Wait for services to boot
         run: sleep 25
 
-      - name: Check auth service
-        run: curl -f http://localhost:5001/auth/test
-
-      - name: Check gateway
+      - name: Check gateway root
         run: curl -f http://localhost:5000/
+
+      - name: Check auth through gateway
+        run: curl -f http://localhost:5000/api/auth/test
+
+      - name: Check catalog through gateway
+        run: curl -f http://localhost:5000/api/catalog
+
+      - name: Show running containers on failure
+        if: failure()
+        run: docker compose ps
 
       - name: Show logs on failure
         if: failure()

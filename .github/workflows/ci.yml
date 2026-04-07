@@ -154,11 +154,14 @@ jobs:
       - name: Shut down services
         if: always()
         run: docker compose down -v
-      - name: Run booking to invoice workflow test
+      - name: Run existing appointment verification
         env:
           PATIENT_EMAIL: ${{ secrets.TEST_PATIENT_EMAIL }}
           PATIENT_PASSWORD: ${{ secrets.TEST_PATIENT_PASSWORD }}
-          DOCTOR_ID: ${{ secrets.TEST_DOCTOR_ID }}
-          SERVICE_ID: ${{ secrets.TEST_SERVICE_ID }}
-          APPOINTMENT_DATE: "2026-04-20T10:00:00.000Z"
-        run: bash scripts/test-booking-flow.sh
+          APPOINTMENT_ID: "27"
+          EXPECTED_INVOICE_ID: "24"
+          EXPECTED_AMOUNT: "200"
+          EXPECTED_STATUS: "UNPAID"
+          BASE_URL: "http://localhost:5000"
+          AUTH_URL: "http://localhost:5001"
+        run: pwsh -File ./scripts/test-existing-appointment-flow.ps1

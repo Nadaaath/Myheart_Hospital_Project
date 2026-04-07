@@ -143,6 +143,18 @@ jobs:
       - name: Check catalog through gateway
         run: curl -f http://localhost:5000/api/catalog
 
+      - name: Run existing appointment verification
+        env:
+          PATIENT_EMAIL: ${{ secrets.TEST_PATIENT_EMAIL }}
+          PATIENT_PASSWORD: ${{ secrets.TEST_PATIENT_PASSWORD }}
+          APPOINTMENT_ID: "27"
+          EXPECTED_INVOICE_ID: "24"
+          EXPECTED_AMOUNT: "200"
+          EXPECTED_STATUS: "UNPAID"
+          BASE_URL: "http://localhost:5000"
+          AUTH_URL: "http://localhost:5000/api"
+        run: pwsh -File ./scripts/test-existing-appointment-flow.ps1
+
       - name: Show running containers on failure
         if: failure()
         run: docker compose ps
@@ -154,14 +166,3 @@ jobs:
       - name: Shut down services
         if: always()
         run: docker compose down -v
-      - name: Run existing appointment verification
-        env:
-          PATIENT_EMAIL: ${{ secrets.TEST_PATIENT_EMAIL }}
-          PATIENT_PASSWORD: ${{ secrets.TEST_PATIENT_PASSWORD }}
-          APPOINTMENT_ID: "27"
-          EXPECTED_INVOICE_ID: "24"
-          EXPECTED_AMOUNT: "200"
-          EXPECTED_STATUS: "UNPAID"
-          BASE_URL: "http://localhost:5000"
-          AUTH_URL: "http://localhost:5001"
-        run: pwsh -File ./scripts/test-existing-appointment-flow.ps1

@@ -6,6 +6,7 @@ services:
     ports:
       - "5000:5000"
     environment:
+      PORT: "5000"
       AUTH_SERVICE_URL: http://auth-service:5001
       PATIENT_SERVICE_URL: http://patient-service:5002
       DOCTOR_SERVICE_URL: http://doctor-service:5003
@@ -33,7 +34,9 @@ services:
     ports:
       - "5001:5001"
     environment:
+      PORT: "5001"
       DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_auth
+      JWT_SECRET: my_super_secret_key
     depends_on:
       - mysql
 
@@ -46,7 +49,9 @@ services:
     ports:
       - "5002:5002"
     environment:
+      PORT: "5002"
       DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_patient
+      JWT_SECRET: my_super_secret_key
     depends_on:
       - mysql
 
@@ -59,7 +64,9 @@ services:
     ports:
       - "5003:5003"
     environment:
+      PORT: "5003"
       DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_doctor
+      JWT_SECRET: my_super_secret_key
     depends_on:
       - mysql
 
@@ -72,7 +79,14 @@ services:
     ports:
       - "5004:5004"
     environment:
+      PORT: "5004"
       DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_appointment
+      JWT_SECRET: my_super_secret_key
+      PATIENT_SERVICE_URL: http://patient-service:5002
+      DOCTOR_SERVICE_URL: http://doctor-service:5003
+      CONSULTATION_SERVICE_URL: http://consultation-records-service:5005
+      BILLING_SERVICE_URL: http://billing-service:5007
+      CATALOG_SERVICE_URL: http://catalog-service:5008
     depends_on:
       - mysql
 
@@ -85,7 +99,9 @@ services:
     ports:
       - "5005:5005"
     environment:
+      PORT: "5005"
       DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_medical
+      JWT_SECRET: my_super_secret_key
     depends_on:
       - mysql
 
@@ -96,7 +112,10 @@ services:
     ports:
       - "5006:5006"
     environment:
+      PORT: "5006"
       MONGO_URI: mongodb://mongodb:27017/myheart_lab
+      JWT_SECRET: my_super_secret_key
+      CATALOG_SERVICE_URL: http://catalog-service:5008
     depends_on:
       - mongodb
 
@@ -108,9 +127,11 @@ services:
     container_name: billing-service
     ports:
       - "5007:5007"
-    
     environment:
+      PORT: "5007"
       DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_billing
+      JWT_SECRET: my_super_secret_key
+      CATALOG_SERVICE_URL: http://catalog-service:5008
     depends_on:
       - mysql
 
@@ -122,9 +143,10 @@ services:
     container_name: catalog-service
     ports:
       - "5008:5008"
-  
     environment:
+      PORT: "5008"
       DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_catalog
+      JWT_SECRET: my_super_secret_key
     depends_on:
       - mysql
 

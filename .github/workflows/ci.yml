@@ -154,3 +154,11 @@ jobs:
       - name: Shut down services
         if: always()
         run: docker compose down -v
+      - name: Run booking to invoice workflow test
+        env:
+          PATIENT_EMAIL: ${{ secrets.TEST_PATIENT_EMAIL }}
+          PATIENT_PASSWORD: ${{ secrets.TEST_PATIENT_PASSWORD }}
+          DOCTOR_ID: ${{ secrets.TEST_DOCTOR_ID }}
+          SERVICE_ID: ${{ secrets.TEST_SERVICE_ID }}
+          APPOINTMENT_DATE: "2026-04-20T10:00:00.000Z"
+        run: bash scripts/test-booking-flow.sh

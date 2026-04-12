@@ -1,0 +1,40 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lab-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lab-service
+  template:
+    metadata:
+      labels:
+        app: lab-service
+    spec:
+      containers:
+        - name: lab-service
+          image: myheart-lab-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5006
+          envFrom:
+            - configMapRef:
+                name: lab-config
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: lab-secret
+                  key: JWT_SECRET
+          readinessProbe:
+            tcpSocket:
+              port: 5006
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 5006
+            initialDelaySeconds: 15
+            periodSeconds: 10
+

@@ -1,0 +1,42 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalog-service
+  template:
+    metadata:
+      labels:
+        app: catalog-service
+    spec:
+      containers:
+        - name: catalog-service
+          image: myheart-catalog-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5008
+          envFrom:
+            - configMapRef:
+                name: catalog-config
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: catalog-secret
+                  key: JWT_SECRET
+          readinessProbe:
+            httpGet:
+              path: /services/health/check
+              port: 5008
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /services/health/check
+              port: 5008
+            initialDelaySeconds: 15
+            periodSeconds: 10
+

@@ -1,0 +1,40 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appointment-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: appointment-service
+  template:
+    metadata:
+      labels:
+        app: appointment-service
+    spec:
+      containers:
+        - name: appointment-service
+          image: myheart-appointment-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5004
+          envFrom:
+            - configMapRef:
+                name: appointment-config
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: appointment-secret
+                  key: JWT_SECRET
+          readinessProbe:
+            tcpSocket:
+              port: 5004
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 5004
+            initialDelaySeconds: 15
+            periodSeconds: 10
+

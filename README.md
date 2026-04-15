@@ -1,128 +1,174 @@
-
-# MyHeart — Healthcare Management System Based on a Microservices Architecture
+# MyHeart — Healthcare Management Platform Based on a Microservices Architecture
 
 ## Academic Context
 
-This project was developed as part of a mini-project in **Service-Oriented Architecture (SOA)** and **Microservices**.  
-Its objective is to design, implement, and deploy a healthcare management system using a distributed architecture where each core business capability is handled by an independent microservice.
+**MyHeart** was developed as part of an academic mini-project in **Service-Oriented Architecture (SOA)** and **Microservices**.  
+The purpose of the project is to design, implement, and deploy a healthcare management platform using a distributed architecture, where each core business capability is managed by an independent microservice.
 
-The project emphasizes:
+The project focuses on the practical application of key distributed-systems principles, including:
 
-- identification of business-oriented microservices
-- REST-based communication between services
-- separation of data storage by service
-- integration through an API Gateway
-- frontend/backend interaction in a distributed system
-- deployment with Docker and Docker Compose
+- business-oriented service decomposition
+- clear separation of concerns
+- service-specific persistence
+- REST-based inter-service communication
+- API Gateway integration
+- frontend/backend interaction in a distributed architecture
+- containerized deployment with Docker and Docker Compose
+
+Beyond the academic requirement, the project was progressively extended to simulate a more realistic healthcare platform with role-based workflows for **admins, doctors, and patients**.
 
 ---
 
 ## Project Overview
 
-**MyHeart** is a healthcare management system developed using a **microservices architecture**.  
-It models core hospital and clinic workflows in a modular, scalable, and maintainable way.
+**MyHeart** is a healthcare management platform built with a **microservices architecture**.  
+It models several essential clinical and administrative workflows in a modular, maintainable, and extensible way.
 
-The system supports several essential healthcare operations, including:
+The platform supports:
 
-- secure authentication and role-based access
+- secure authentication and role-based access control
 - patient and doctor management
 - appointment booking and scheduling
 - consultation and medical record management
 - billing and invoice generation
 - catalog-based medical service browsing
-- lab test requests and results handling
+- lab request and result handling
+- admin-side operational management interfaces
+- role-specific dashboards for key actors
 
-The main goal of this project is to replace a tightly coupled monolithic approach with a more flexible architecture where services can evolve independently while still collaborating through well-defined APIs.
+The main architectural objective is to replace a tightly coupled monolithic structure with a set of **collaborating services**, each responsible for a well-defined business domain.
 
 ---
 
 ## Project Objective
 
-Healthcare systems often become difficult to maintain when all business logic is grouped into a single monolithic application.  
-As the number of users, features, and workflows grows, these systems become harder to scale, debug, extend, and deploy.
+Traditional healthcare applications often become difficult to evolve when authentication, appointments, billing, records, and user management are all implemented inside one monolithic codebase.
 
-The objective of **MyHeart** is to provide a modular alternative by decomposing the system into **independent microservices**, where each service owns:
+As requirements grow, such systems typically become:
 
-- a clear business responsibility
+- harder to maintain
+- harder to debug
+- harder to scale
+- harder to test
+- harder to deploy safely
+
+The objective of **MyHeart** is to provide a modular alternative by decomposing the application into **independent microservices**, where each service owns:
+
+- its own business responsibility
 - its own API
 - its own persistence layer
+- its own deployment boundary
 
-This makes the application:
+This makes the platform:
 
 - easier to understand
-- easier to maintain
+- easier to evolve
 - easier to test
-- easier to extend
-- more aligned with modern distributed system design principles
+- easier to containerize
+- better aligned with modern distributed backend design
 
 ---
 
 ## Main Actors
 
-The application currently supports the following actors:
+The application currently supports three main actors.
 
 ### 1. Admin
-The administrator is responsible for:
+
+The administrator is responsible for system-level management tasks, including:
+
 - creating patient accounts
 - creating doctor accounts
-- managing system access
+- reviewing patient records
+- reviewing doctor activity
+- managing lab result publication
+- supervising platform data through admin dashboards
 
 ### 2. Patient
+
 The patient can:
+
 - log in securely
-- browse available healthcare services
+- browse available medical services
 - book appointments
 - view appointment history
 - access appointment details
-- see consultation information
-- see billing and invoice information
-- see lab-related information
+- consult prescriptions
+- access lab results
+- open downloadable lab reports when available
+- view medical and billing-related information connected to appointments
 
 ### 3. Doctor
+
 The doctor can:
+
 - log in securely
 - view assigned appointments
-- open appointment details
-- add consultation notes
-- add medical observations / prescriptions
+- access appointment details
+- create or update consultation records
+- add diagnosis and notes
+- prescribe treatments / medications
 - request lab tests
+- review lab results associated with patient appointments
 
 ---
 
 ## Functional Scope
 
-The system implements a realistic healthcare workflow across multiple services.
+The system implements a realistic healthcare workflow distributed across multiple backend services.
 
 ### Patient-side features
+
 - secure login
-- browse medical service catalog
-- choose a service and book an appointment
-- view upcoming and past appointments
-- open appointment details
-- consult billing and medical information
+- service catalog browsing
+- appointment booking
+- appointment history access
+- appointment details page
+- prescription access
+- lab result access
+- downloadable lab report access when provided
+- consultation-related information access
+- billing-related information access
 
 ### Doctor-side features
+
 - secure login
-- see doctor appointment list
-- open consultation pages
-- write diagnosis and notes
-- add prescription-related information
-- request lab tests
+- doctor appointment dashboard
+- consultation page access
+- diagnosis and clinical notes entry
+- prescription management
+- lab request creation
+- appointment-linked workflow handling
+
+### Admin-side features
+
+- admin authentication and protected routing
+- patient account creation and management
+- doctor account creation and management
+- lab result administration
+- admin dashboard with operational summaries
+- patient record access from admin view
+- doctor activity record access from admin view
 
 ### Backend features
-- role-based authentication
-- appointment management
-- prevention of doctor double-booking
-- invoice generation linked to appointment creation
-- consultation storage
-- catalog-based service pricing
-- lab request integration
+
+- JWT-based authentication
+- role-based authorization
+- patient management
+- doctor management
+- appointment lifecycle management
+- prevention of double-booking for the same doctor/time slot
+- consultation record creation and update
+- invoice creation linked to appointment booking
+- service pricing retrieval through the catalog service
+- lab request and result workflow
+- file-based lab report access through the gateway
 
 ---
 
 ## Architecture
 
-The system follows a **microservices architecture** and uses an **API Gateway** as the main entry point for frontend requests.
+The system follows a **microservices architecture** with an **API Gateway** acting as the main entry point for frontend requests.
 
 ### Global Architecture Diagram
 
@@ -143,19 +189,20 @@ Service     Service       Service     Service         Records Service   Service 
                                                                                   Lab Service
 
 Databases:
-- MySQL: auth, patient, doctor, appointment, medical, billing, catalog
+- MySQL: auth, patient, doctor, appointment, consultation-records, billing, catalog
 - MongoDB: lab
 ````
 
 ### Main Architectural Choices
 
-The project applies the following microservices principles:
+The platform applies the following microservices principles:
 
-* **separation of concerns**: each service is responsible for one business capability
+* **separation of concerns**: each service handles one business capability
 * **database per service**: each service owns its own persistence layer
 * **REST communication**: services communicate synchronously through HTTP APIs
-* **API Gateway pattern**: frontend requests are centralized through one entry point
+* **API Gateway pattern**: frontend/backend communication is centralized
 * **containerized deployment**: services and databases run through Docker Compose
+* **role-based workflow design**: UI and backend behavior differ depending on the actor
 
 ---
 
@@ -168,22 +215,24 @@ The API Gateway is the unique entry point for frontend requests.
 Responsibilities:
 
 * receive frontend requests
-* route them to the appropriate backend service
-* simplify frontend-backend communication
-* centralize access to backend microservices
+* route requests to the correct backend service
+* simplify frontend/backend integration
+* centralize access to backend APIs
+* expose uploaded lab report files through proxied routes
 
 ### 2. Auth Service
 
-Responsible for authentication and authorization logic.
+Responsible for authentication and role management.
 
 Responsibilities:
 
 * login
 * JWT generation
 * user role handling
-* account authentication
+* authentication validation
+* internal account creation for other services
 
-Main roles:
+Supported roles:
 
 * `ADMIN`
 * `DOCTOR`
@@ -196,8 +245,9 @@ Responsible for patient data management.
 Responsibilities:
 
 * patient profile creation
-* patient data retrieval
-* patient-related data management
+* patient information retrieval
+* patient profile updates
+* patient-related administrative data management
 
 ### 4. Doctor Service
 
@@ -207,7 +257,7 @@ Responsibilities:
 
 * doctor profile creation
 * doctor retrieval
-* doctor filtering by department
+* department-based doctor filtering
 * doctor directory management
 
 ### 5. Appointment Service
@@ -219,8 +269,10 @@ Responsibilities:
 * appointment booking
 * appointment retrieval
 * appointment cancellation
-* appointment detail aggregation
-* prevention of doctor schedule conflicts
+* appointment status updates
+* appointment rescheduling
+* detailed appointment aggregation
+* doctor schedule conflict prevention
 
 ### 6. Consultation Records Service
 
@@ -228,73 +280,145 @@ Responsible for consultation and medical information.
 
 Responsibilities:
 
-* storing diagnosis
-* storing medical notes
-* storing consultation information
-* managing medical records associated with appointments
+* diagnosis storage
+* clinical notes storage
+* prescription storage
+* appointment-linked medical record management
+* patient medical history retrieval
 
 ### 7. Billing Service
 
-Responsible for invoices and billing logic.
+Responsible for invoice creation and billing logic.
 
 Responsibilities:
 
 * invoice generation
 * invoice retrieval by appointment
-* invoice status tracking
+* billing amount persistence
+* invoice state tracking
 
 ### 8. Catalog Service
 
-Responsible for the catalog of medical services and prices.
+Responsible for bookable medical services and pricing information.
 
 Responsibilities:
 
-* exposing bookable medical services
+* exposing medical services
 * storing service descriptions
-* storing and serving pricing information
-* acting as the pricing reference for billing
+* storing prices
+* serving as pricing reference for billing
+* exposing lab test catalog information
 
 ### 9. Lab Service
 
-Responsible for lab workflows.
+Responsible for lab-related workflows.
 
 Responsibilities:
 
-* lab test requests
-* lab data storage
-* lab-related results integration
+* lab test request creation
+* lab result publication
+* lab result storage
+* PDF lab report association
+* appointment- and patient-linked lab retrieval
 
 ---
 
-## Service Communication
+## Current Implemented Business Flows
 
-The services communicate using **REST APIs**.
+The system already supports several complete end-to-end flows.
 
-### Example 1 — Appointment booking flow
+### Workflow A — Patient books an appointment
 
-1. Patient selects a medical service
-2. Patient books an appointment
-3. Appointment Service creates the appointment
-4. Billing Service is triggered
-5. Catalog Service provides pricing/service information
-6. Invoice is generated
+1. Patient logs in
+2. Patient browses the medical services catalog
+3. Patient selects a service
+4. Patient chooses the appointment information
+5. Appointment Service creates the appointment
+6. Catalog Service provides pricing information
+7. Billing Service generates an invoice
+8. Patient can later consult appointment details and linked information
 
-### Example 2 — Appointment details flow
+### Workflow B — Doctor consultation
 
-1. Patient opens an appointment details page
-2. Frontend calls the API Gateway
-3. API Gateway routes the request to the Appointment Service
-4. Appointment Service retrieves appointment information
-5. Related data is fetched from other services as needed
-6. Frontend displays aggregated information
+1. Doctor logs in
+2. Doctor opens assigned appointments
+3. Doctor accesses appointment details
+4. Doctor writes diagnosis and notes
+5. Doctor adds prescription information
+6. Consultation Records Service stores or updates the consultation record
 
-### Example 3 — Doctor consultation flow
+### Workflow C — Lab request and result flow
 
 1. Doctor opens an appointment
-2. Doctor adds consultation information
-3. Consultation Records Service stores the data
-4. Doctor may request a lab test
-5. Lab workflow is linked to the appointment context
+2. Doctor requests a lab test
+3. Admin accesses the lab administration area
+4. Admin publishes the lab result
+5. Admin can attach a PDF lab report
+6. Doctor can later open the result and the PDF
+7. Patient can also access the result and downloadable report
+
+### Workflow D — Appointment details aggregation
+
+1. User opens an appointment details page
+2. Frontend sends request through the API Gateway
+3. The relevant backend service aggregates appointment-related data
+4. Related information is fetched as needed from doctor, consultation, billing, and lab services
+5. The frontend displays a more complete appointment context
+
+### Workflow E — Admin patient record consultation
+
+1. Admin opens the patients management page
+2. Admin selects a patient
+3. Admin accesses a dedicated patient record page
+4. The page displays:
+
+   * patient identity and administrative data
+   * medical history
+   * appointments
+   * lab information
+   * related healthcare context
+
+### Workflow F — Admin doctor activity consultation
+
+1. Admin opens the doctors management page
+2. Admin selects a doctor
+3. Admin accesses a dedicated doctor activity page
+4. The page displays:
+
+   * doctor profile
+   * department and contact data
+   * appointments handled
+   * assigned patients
+   * written consultation records
+   * requested lab tests
+
+---
+
+## Role-Based Frontend Structure
+
+The frontend is progressively organized by role and responsibility, to make it easier to maintain and extend.
+
+Current structure includes folders such as:
+
+```text
+src/
+├── api/
+├── components/
+│   ├── common/
+│   ├── layouts/
+│   ├── sidebars/
+│   └── ...
+├── pages/
+│   ├── admin/
+│   ├── doctor/
+│   ├── patient/
+│   ├── auth/
+│   └── ...
+├── utils/
+└── App.jsx
+```
+
+This reflects the role-specific nature of the platform and improves maintainability compared to a flat page structure.
 
 ---
 
@@ -310,6 +434,8 @@ The services communicate using **REST APIs**.
 ### Frontend
 
 * **React**
+* **React Router**
+* custom admin / doctor / patient interfaces
 
 ### Databases
 
@@ -325,7 +451,7 @@ The services communicate using **REST APIs**.
 
 ## Databases
 
-The system uses **database separation per service**, which is a core microservices design principle.
+The system follows the **database-per-service** principle.
 
 ### MySQL Databases
 
@@ -345,18 +471,19 @@ The following MySQL databases are used:
 
 ### Why MySQL?
 
-MySQL is used for strongly structured business domains that require relational consistency:
+MySQL is used for structured domains requiring clear relational consistency:
 
 * authentication
+* doctors
+* patients
 * appointments
+* consultation records
 * billing
-* medical records
-* doctors and patients
-* catalog
+* service catalog
 
 ### Why MongoDB?
 
-MongoDB is used for the lab service because lab-related records are a good candidate for document-oriented and more flexible storage.
+MongoDB is used for the lab service because lab-related data can benefit from document-oriented storage and more flexible schema handling.
 
 ---
 
@@ -393,11 +520,11 @@ Contains all backend microservices.
 
 #### `frontend/`
 
-Contains the frontend application.
+Contains the React frontend application.
 
 #### `db-init/mysql/`
 
-Contains SQL dump files used to initialize MySQL databases when Docker volumes are recreated.
+Contains SQL files used to initialize MySQL databases when Docker volumes are recreated.
 
 #### `docker-compose.yml`
 
@@ -407,6 +534,7 @@ Defines the complete multi-container environment:
 * API Gateway
 * MySQL
 * MongoDB
+* frontend
 
 ---
 
@@ -420,7 +548,7 @@ Before running the project, make sure you have:
 
 * **Docker Desktop**
 * **Git**
-* optional: **Node.js** if you also want to inspect or run parts locally outside Docker
+* optional: **Node.js** if you want to inspect or run parts locally outside Docker
 
 ---
 
@@ -471,6 +599,7 @@ This means:
 
 | Component                    | Port  |
 | ---------------------------- | ----- |
+| Frontend                     | 4173  |
 | API Gateway                  | 5000  |
 | Auth Service                 | 5001  |
 | Patient Service              | 5002  |
@@ -485,7 +614,7 @@ This means:
 
 ### Notes
 
-* backend containers communicate internally through Docker service names
+* backend containers communicate internally using Docker service names
 * MySQL is exposed on host port `3307`
 * MongoDB is exposed on host port `27017`
 
@@ -503,10 +632,10 @@ Typical environment variables include:
 * service URLs such as:
 
   * `DOCTOR_SERVICE_URL`
+  * `PATIENT_SERVICE_URL`
   * `CONSULTATION_SERVICE_URL`
   * `BILLING_SERVICE_URL`
   * `CATALOG_SERVICE_URL`
-  * `PATIENT_SERVICE_URL`
 
 ### Important Docker Note
 
@@ -529,76 +658,9 @@ CATALOG_SERVICE_URL=http://127.0.0.1:5008
 
 ---
 
-## Database Initialization and Persistence
-
-The MySQL databases are initialized from SQL dump files stored in:
-
-```text
-db-init/mysql/
-```
-
-This allows the project to be restored with a known working database state.
-
-### Data persistence strategy used in the project
-
-* during normal development, data is preserved through Docker volumes
-* for long-term reset/recovery, SQL dumps are kept in `db-init/mysql`
-* if the current Docker database state changes and must become the new default state, the SQL dump files should be regenerated
-
-This approach allows:
-
-* normal persistent work
-* controlled reset
-* reproducible project setup for evaluation and submission
-
----
-
-## Main Workflows Implemented
-
-### Workflow A — Patient books an appointment
-
-1. Patient logs in
-2. Patient browses services from the catalog
-3. Patient selects a service
-4. Patient chooses appointment information
-5. Appointment is created
-6. Billing is generated
-7. Patient can later consult appointment details
-
-### Workflow B — Patient views appointment details
-
-1. Patient logs in
-2. Patient opens appointments page
-3. Patient selects one appointment
-4. The system retrieves:
-
-   * appointment data
-   * doctor information
-   * consultation information
-   * billing information
-   * lab-related data if available
-
-### Workflow C — Doctor consultation
-
-1. Doctor logs in
-2. Doctor opens appointment details
-3. Doctor adds diagnosis and notes
-4. Doctor may add prescription data
-5. Doctor may request lab tests
-
-### Workflow D — Billing integration
-
-1. Appointment is created
-2. Billing Service is called
-3. Catalog Service provides service/pricing data
-4. Invoice is stored
-5. Invoice can be consulted later by appointment
-
----
-
 ## API Access Pattern
 
-The frontend accesses the backend **only through the API Gateway**.
+The frontend accesses backend services **through the API Gateway**.
 
 ### Example
 
@@ -608,15 +670,84 @@ Frontend request:
 http://localhost:5000/api/appointments/24/details
 ```
 
-The gateway then routes the request to the correct backend service internally.
+The gateway then forwards the request internally to the correct service.
 
 This keeps the frontend simpler and closer to how real distributed systems are exposed.
 
 ---
 
-## Test / Demo Accounts
+## Lab Report File Access
 
-Replace passwords with the exact demo values you want to provide.
+The lab workflow supports file-backed reports.
+
+Uploaded PDF reports are stored and then exposed through the gateway using proxied routes such as:
+
+```text
+http://localhost:5000/api/labs/uploads/<filename>.pdf
+```
+
+This allows both doctor and patient interfaces to access downloadable lab reports through the same platform entry point.
+
+---
+
+## Data Persistence and Initialization
+
+The MySQL databases are initialized from SQL dump files stored in:
+
+```text
+db-init/mysql/
+```
+
+This allows the project to be restored with a known working database state.
+
+### Persistence strategy
+
+* during normal development, data is preserved through Docker volumes
+* for clean reset or recovery, SQL dumps are stored in `db-init/mysql`
+* if the Docker database state changes and must become the new default state, SQL dump files should be regenerated
+
+This approach supports:
+
+* normal development persistence
+* controlled reset
+* reproducible environment setup for demonstration or evaluation
+
+---
+
+## Main Frontend Views Implemented
+
+### Admin views
+
+* admin dashboard
+* patients management
+* patient record details
+* doctors management
+* doctor activity details
+* lab management
+
+### Doctor views
+
+* doctor dashboard
+* appointments list
+* appointment details
+* patient-related consultation workflow
+* doctor lab access
+
+### Patient views
+
+* patient dashboard
+* service browsing
+* appointment booking
+* appointment history
+* appointment details
+* prescriptions view
+* lab results view
+
+---
+
+## Demo / Test Accounts
+
+Replace passwords with the exact values you want to provide in the repository.
 
 ### Admin
 
@@ -631,46 +762,91 @@ Replace passwords with the exact demo values you want to provide.
 ### Doctor
 
 * Email: `nadia.toumi@hopital.com`
+
 * Password: `123456`
 
 * Email: `mehdi.kaci@hopital.com`
+
 * Password: `123456`
 
-If preferred, passwords can be shared separately in the report instead of being publicly written in the repository.
+If preferred, demo passwords can be shared separately in the report instead of remaining inside the repository.
 
 ---
 
 ## How to Demonstrate the Project
 
-A simple demonstration sequence can be:
+A good demonstration scenario can be:
 
-1. Start the project with Docker
+1. Start the system with Docker Compose
 2. Open the frontend
 3. Log in as patient
-4. Browse medical services
-5. Show appointment booking
-6. Open appointment list
+4. Browse the service catalog
+5. Book an appointment
+6. Open the patient appointments list
 7. Open appointment details
 8. Log in as doctor
-9. Show consultation and lab request flow
-10. Show billing and invoice linkage to appointments
+9. Open assigned appointments
+10. Write consultation information
+11. Request a lab test
+12. Log in as admin
+13. Open lab management
+14. Publish a result and attach a PDF report
+15. Return to patient or doctor views to show result access
 
-This provides a clear demonstration of both business logic and microservices integration.
+This demonstrates both business logic and inter-service integration.
 
 ---
 
 ## Troubleshooting
 
-### 1. A service cannot reach another service
+### 1. One service cannot reach another
 
 Check that backend services use Docker service names, not `localhost`.
 
-Example:
+Correct:
 
-* correct: `http://doctor-service:5003`
-* wrong: `http://localhost:5003`
+* `http://doctor-service:5003`
 
-### 2. Data disappears after a reset
+Incorrect:
+
+* `http://localhost:5003`
+
+### 2. Frontend loads but backend requests fail
+
+Check:
+
+* API Gateway logs
+* target service logs
+* Docker internal URLs
+* role authorization middleware
+* container startup order and health
+
+### 3. Uploaded lab PDF cannot be opened
+
+Check:
+
+* lab-service static file serving
+* API Gateway proxy configuration for `/api/labs/uploads/...`
+* stored `file_url` values in lab documents
+
+### 4. A route returns 404 through the gateway
+
+Check:
+
+* whether the backend route actually exists
+* whether the gateway proxy path matches the service route prefix
+* whether the request is being tested on the correct port/path
+
+### 5. Prisma reports missing tables or schema issues
+
+Check:
+
+* the real table names in MySQL
+* Prisma model mappings
+* the correct database connection
+* migration / initialization consistency
+
+### 6. Data disappears after reset
 
 If you used:
 
@@ -678,56 +854,60 @@ If you used:
 docker compose down -v
 ```
 
-then Docker volumes were deleted and the database was restored from the SQL dump files in `db-init/mysql`.
-
-### 3. A Prisma table is reported as missing
-
-Check:
-
-* the real table name in MySQL
-* Prisma model mapping using `@@map(...)`
-* whether the correct database is being used
-
-### 4. Frontend loads but backend requests fail
-
-Check:
-
-* API Gateway logs
-* service logs
-* Docker internal URLs
-* container health and startup
+then Docker volumes were removed and the database was reinitialized from the SQL files in `db-init/mysql`.
 
 ---
 
-## Academic Value of the Project
+## Academic and Technical Value
 
-This project demonstrates several important concepts in SOA and Microservices:
+This project demonstrates several important concepts in SOA and microservices:
 
-* identification of business-aligned microservices
-* service decomposition
-* inter-service REST communication
-* separate persistence per service
+* business-aligned service decomposition
 * API Gateway usage
-* Dockerized multi-service deployment
-* role-based system design
-* workflow orchestration between multiple services
+* distributed REST communication
+* database-per-service design
+* role-based backend architecture
+* appointment/billing/catalog orchestration
+* practical Dockerized deployment
+* frontend integration with a distributed backend
+* realistic actor-based healthcare workflows
 
-It therefore goes beyond a simple CRUD application and models a more realistic distributed backend architecture.
+It therefore goes beyond a simple CRUD application and models a more realistic distributed healthcare backend.
 
 ---
 
-## Future Improvements
+## Current Strengths of the Project
+
+At its current stage, the project already demonstrates:
+
+* multi-service backend decomposition
+* real role-based user flows
+* admin / doctor / patient separation
+* appointment booking logic
+* consultation workflow
+* billing integration
+* lab result publication with downloadable reports
+* Dockerized local deployment
+* API Gateway based architecture
+* progressively improved frontend organization
+
+---
+
+## Possible Future Improvements
 
 Possible future improvements include:
 
-* asynchronous communication with message brokers
-* stronger error handling and observability
-* better frontend UX/UI polishing
-* monitoring and logging dashboards
+* global admin appointment dashboard
+* admin billing dashboard
+* richer catalog management
+* monitoring and observability dashboards
+* automated tests
+* Swagger / OpenAPI documentation
+* CI/CD automation
+* stronger validation and security hardening
 * cloud deployment
-* notification workflows
-* richer lab result handling
-* stricter security hardening for production use
+* asynchronous messaging for selected workflows
+* richer notification features
 
 ---
 
@@ -743,7 +923,7 @@ docker compose up --build
 ```
 
 3. access the application through the frontend and API Gateway
-4. use the provided test accounts
+4. use the provided demo accounts
 
 If a full clean reset is required:
 
@@ -762,7 +942,8 @@ docker compose up --build
 
 ## Final Note
 
-This repository contains the full implementation of **MyHeartHospital**, a healthcare management system built on a microservices architecture and deployed with Docker.
-The project was developed to explore the practical application of microservices design principles in a realistic healthcare scenario.
+This repository contains the implementation of **MyHeart**, a healthcare management platform built with a microservices architecture and deployed with Docker Compose.
 
+The project was developed to explore the practical application of service-oriented and microservices design principles in a realistic healthcare scenario, while progressively evolving from an academic prototype toward a richer and more structured distributed system.
 
+```

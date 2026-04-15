@@ -210,3 +210,25 @@ exports.deleteConsultationRecord = async (req, res) => {
     })
   }
 }
+exports.getAllConsultationRecords = async (req, res) => {
+  try {
+    if (req.user.role !== "ADMIN") {
+      return res.status(403).json({
+        message: "Only admins can access all consultation records"
+      })
+    }
+
+    const records = await prisma.consultationRecord.findMany({
+      orderBy: {
+        created_at: "desc"
+      }
+    })
+
+    res.json(records)
+  } catch (error) {
+    console.error("GET ALL CONSULTATION RECORDS ERROR:", error)
+    res.status(500).json({
+      error: error.message
+    })
+  }
+}

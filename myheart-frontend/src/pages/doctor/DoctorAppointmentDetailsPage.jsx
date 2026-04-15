@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import api from "../api/axios"
+import api from "../../api/axios"
 
 function DoctorAppointmentDetailsPage() {
   const { id } = useParams()
@@ -470,6 +470,60 @@ function DoctorAppointmentDetailsPage() {
       setLabSubmitLoading(false)
     }
   }
+  const handleLabResultFieldChange = (labId, field, value) => {
+  setLabResultInputs((prev) => ({
+    ...prev,
+    [labId]: {
+      ...prev[labId],
+      [field]: value,
+    },
+  }))
+}
+
+const handleSubmitLabResult = async (labId) => {
+  const current = labResultInputs[labId] || {}
+  const result = current.result?.trim() || ""
+  const file_url = current.file_url?.trim() || ""
+
+  if (!result) {
+    setError("Please enter the lab result before submitting.")
+    return
+  }
+
+  try {
+    setLabSubmitLoading(true)
+    setError("")
+    setSuccessMessage("")
+
+    await api.patch(
+      `/labs/tests/${labId}/result`,
+      {
+        result,
+        file_url,
+      },
+      { headers }
+    )
+
+    await fetchAppointmentLabs()
+
+    setLabResultInputs((prev) => {
+      const copy = { ...prev }
+      delete copy[labId]
+      return copy
+    })
+
+    setSuccessMessage("Lab result submitted successfully.")
+  } catch (err) {
+    console.error("Lab result submit error:", err)
+    setError(
+      err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        "Failed to submit lab result."
+    )
+  } finally {
+    setLabSubmitLoading(false)
+  }
+}
 
   if (loading) {
     return (
@@ -744,72 +798,93 @@ function DoctorAppointmentDetailsPage() {
                 </section>
 
                 <section style={sectionCardStyle}>
-                  <div style={sectionTitleRowStyle}>
-                    <span style={sectionTitleStyle}>LAB REQUESTS</span>
-                    <div style={sectionLineStyle} />
-                  </div>
+  <div style={sectionTitleRowStyle}>
+    <span style={sectionTitleStyle}>LAB REQUESTS</span>
+    <div style={sectionLineStyle} />
+  </div>
 
-                  <div style={{ display: "grid", gap: "14px", marginTop: "14px" }}>
-                    <div style={labRequestRowStyle}>
-                      <select
-                        value={selectedLabCode}
-                        onChange={(e) => setSelectedLabCode(e.target.value)}
-                        style={labSelectStyle}
-                      >
-                        {catalogLabTests.length === 0 ? (
-                          <option value="">No lab tests found</option>
-                        ) : (
-                          catalogLabTests.map((test) => (
-                            <option key={test.code} value={test.code}>
-                              {test.code} - {test.name}
-                            </option>
-                          ))
-                        )}
-                      </select>
+  <div style={{ display: "grid", gap: "14px", marginTop: "14px" }}>
+    <div style={labRequestRowStyle}>
+      <select
+        value={selectedLabCode}
+        onChange={(e) => setSelectedLabCode(e.target.value)}
+        style={labSelectStyle}
+      >
+        {catalogLabTests.length === 0 ? (
+          <option value="">No lab tests found</option>
+        ) : (
+          catalogLabTests.map((test) => (
+            <option key={test.code} value={test.code}>
+              {test.code} - {test.name}
+            </option>
+          ))
+        )}
+      </select>
 
-                      <button
-                        onClick={handleRequestLabTest}
-                        style={primaryActionButtonStyle}
-                        disabled={
-                          labSubmitLoading ||
-                          !selectedLabCode ||
-                          catalogLabTests.length === 0
-                        }
-                      >
-                        {labSubmitLoading ? "Requesting..." : "Request Lab Test"}
-                      </button>
-                    </div>
+      <button
+        onClick={handleRequestLabTest}
+        style={primaryActionButtonStyle}
+        disabled={
+          labSubmitLoading ||
+          !selectedLabCode ||
+          catalogLabTests.length === 0
+        }
+      >
+        {labSubmitLoading ? "Requesting..." : "Request Lab Test"}
+      </button>
+    </div>
 
-                    {labLoading ? (
-                      <p style={{ color: "#6f8ea0" }}>Loading lab requests...</p>
-                    ) : labRequests.length === 0 ? (
-                      <div style={emptyInlineCardStyle}>
-                        No lab tests requested for this appointment yet.
-                      </div>
-                    ) : (
-                      labRequests.map((lab) => (
-                        <div key={lab._id || lab.id} style={labRequestItemStyle}>
-                          <div>
-                            <p style={labNameStyle}>
-                              {lab.lab_test_code} - {lab.lab_test_name}
-                            </p>
-                            <p style={labMetaStyleInline}>
-                              {lab.lab_test_category || "N/A"} ·{" "}
-                              {lab.price_snapshot ?? "N/A"} DH
-                            </p>
-                            {lab.result && (
-                              <p style={labResultTextStyle}>Result: {lab.result}</p>
-                            )}
-                          </div>
+    {labLoading ? (
+      <p style={{ color: "#6f8ea0" }}>Loading lab requests...</p>
+    ) : labRequests.length === 0 ? (
+      <div style={emptyInlineCardStyle}>
+        No lab tests requested for this appointment yet.
+      </div>
+    ) : (
+      labRequests.map((lab) => {
+        const isCompleted =
+          (lab.status || "").toUpperCase() === "COMPLETED" ||
+          (lab.status || "").toUpperCase() === "READY"
 
-                          <span style={getLabBadgeStyle(lab.status)}>
-                            {lab.status || "PENDING"}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </section>
+        return (
+          <div key={lab._id || lab.id} style={labRequestItemStyle}>
+            <div>
+              <p style={labNameStyle}>
+                {lab.lab_test_code} - {lab.lab_test_name}
+              </p>
+
+              <p style={labMetaStyleInline}>
+                {lab.lab_test_category || "N/A"} ·{" "}
+                {lab.price_snapshot ?? "N/A"} DH
+              </p>
+
+              {isCompleted && lab.result && (
+                <p style={labResultTextStyle}>
+                  <strong>Result:</strong> {lab.result}
+                </p>
+              )}
+
+              {isCompleted && lab.file_url && (
+                <a
+                  href={lab.file_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={labFileLinkStyle}
+                >
+                  Open attached file ↗
+                </a>
+              )}
+            </div>
+
+            <span style={getLabBadgeStyle(lab.status)}>
+              {lab.status || "PENDING"}
+            </span>
+          </div>
+        )
+      })
+    )}
+  </div>
+</section>
 
                 <section style={sectionCardStyle}>
                   <div style={sectionTitleRowStyle}>
@@ -1547,6 +1622,59 @@ const successCardStyle = {
   padding: "14px 16px",
   marginBottom: "16px",
   border: "1px solid #BBF7D0",
+}
+const labRequestCardStyle = {
+  background: "#F8F7FF",
+  border: "1px solid #E7E5F4",
+  borderRadius: "18px",
+  padding: "16px",
+}
+
+const labRequestTopStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: "12px",
+  flexWrap: "wrap",
+}
+
+const labUploadBoxStyle = {
+  display: "grid",
+  gap: "12px",
+  marginTop: "14px",
+}
+
+const labTextareaStyle = {
+  width: "100%",
+  resize: "vertical",
+  border: "1px solid #E7E5F4",
+  borderRadius: "14px",
+  padding: "14px 16px",
+  fontSize: "0.98rem",
+  outline: "none",
+  color: "#2F3655",
+  background: "#FFFFFF",
+  boxSizing: "border-box",
+}
+
+const labUrlInputStyle = {
+  width: "100%",
+  border: "1px solid #E7E5F4",
+  borderRadius: "14px",
+  padding: "14px 16px",
+  fontSize: "0.98rem",
+  outline: "none",
+  color: "#2F3655",
+  background: "#FFFFFF",
+  boxSizing: "border-box",
+}
+
+const labFileLinkStyle = {
+  display: "inline-block",
+  marginTop: "10px",
+  color: "#6C63FF",
+  fontWeight: "700",
+  textDecoration: "none",
 }
 
 export default DoctorAppointmentDetailsPage

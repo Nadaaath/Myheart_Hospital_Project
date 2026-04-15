@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import api from "../api/axios"
+import api from "../../api/axios"
 
 if (!document.querySelector('link[href*="Plus+Jakarta+Sans"]')) {
   const link = document.createElement("link")
@@ -457,29 +457,36 @@ export default function LoginPage() {
   })
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
+  e.preventDefault()
+  setError("")
+  setLoading(true)
 
-    try {
-      const res = await api.post("/auth/login", { email, password })
-      const { token, role } = res.data
+  try {
+    const res = await api.post("/auth/login", { email, password })
+    const { token, role, reference_id } = res.data
 
-      localStorage.setItem("token", token)
-      localStorage.setItem("role", role)
-      localStorage.setItem("remembered_email", email)
+    localStorage.setItem("token", token)
+    localStorage.setItem("role", role)
+    localStorage.setItem("reference_id", reference_id ?? "")
+    localStorage.setItem("remembered_email", email)
+    console.log("LOGIN ROLE:", role)
 
+
+    if (role === "ADMIN") {
+      navigate("/admin/dashboard")
+    } else {
       navigate("/dashboard")
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          err.response?.data?.error ||
-          "Login failed. Please check your credentials."
-      )
-    } finally {
-      setLoading(false)
     }
+  } catch (err) {
+    setError(
+      err.response?.data?.message ||
+        err.response?.data?.error ||
+        "Login failed. Please check your credentials."
+    )
+  } finally {
+    setLoading(false)
   }
+}
 
   return (
     <>

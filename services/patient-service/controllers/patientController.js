@@ -107,3 +107,13 @@ exports.updatePatient = async (req, res) => {
   }
 
 }
+exports.getPatients = async (req, res) => {
+  try {
+    const patients = await prisma.patient.findMany({
+      orderBy: { id: "desc" }
+    })
+    res.json(patients)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}

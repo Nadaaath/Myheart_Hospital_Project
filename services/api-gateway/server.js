@@ -73,6 +73,25 @@ app.use("/api/doctors", buildProxy(DOCTOR_SERVICE_URL, "/doctors"))
 app.use("/api/appointments", buildProxy(APPOINTMENT_SERVICE_URL, "/appointments"))
 app.use("/api/consultation-records", buildProxy(CONSULTATION_SERVICE_URL, "/consultation-records"))
 app.use("/api/billing", buildProxy(BILLING_SERVICE_URL, "/billing"))
+app.use(
+  "/api/labs/uploads",
+  createProxyMiddleware({
+    target: LAB_SERVICE_URL,
+    changeOrigin: true,
+    pathRewrite: (path) => `/uploads${path}`,
+    on: {
+      error: (err, req, res) => {
+        console.error(`Proxy error on ${req.originalUrl}:`, err.message)
+        res.status(500).json({
+          message: "Gateway proxy error",
+          error: err.message,
+          target: LAB_SERVICE_URL,
+          originalUrl: req.originalUrl,
+        })
+      },
+    },
+  })
+)
 app.use("/api/labs", buildProxy(LAB_SERVICE_URL, "/labs"))
 app.use("/api/catalog", buildProxy(CATALOG_SERVICE_URL, "/services"))
 

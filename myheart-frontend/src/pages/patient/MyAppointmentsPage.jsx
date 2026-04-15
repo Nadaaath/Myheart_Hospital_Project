@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import api from "../api/axios"
-import PatientSidebar from "../components/PatientSidebar"
+import api from "../../api/axios"
+import PatientSidebar from "../../components/sidebars/PatientSidebar"
 
 if (!document.querySelector('link[href*="Plus+Jakarta+Sans"]')) {
   const link = document.createElement("link")

@@ -6,7 +6,8 @@ const {
   getAppointmentRecord,
   getPatientHistory,
   deleteConsultationRecord,
-  getMyPrescriptions
+  getMyPrescriptions,
+  getAllConsultationRecords
 } = require("../controllers/consultationController")
 
 const { verifyToken } = require("../middleware/authMiddleware")
@@ -18,6 +19,14 @@ router.post(
   authorizeRole("DOCTOR"),
   createConsultationRecord
 )
+
+router.get(
+  "/",
+  verifyToken,
+  authorizeRole("ADMIN"),
+  getAllConsultationRecords
+)
+
 router.get("/appointment/:id", verifyToken, getAppointmentRecord)
 
 router.get("/my-prescriptions", verifyToken, getMyPrescriptions)
@@ -27,4 +36,5 @@ router.get(
   verifyToken,
   getPatientHistory
 )
+
 module.exports = router

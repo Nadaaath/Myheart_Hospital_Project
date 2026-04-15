@@ -116,6 +116,8 @@ services:
       MONGO_URI: mongodb://mongodb:27017/myheart_lab
       JWT_SECRET: my_super_secret_key
       CATALOG_SERVICE_URL: http://catalog-service:5008
+    volumes:
+     - ./services/lab-service/uploads:/app/uploads
     depends_on:
       - mongodb
 
@@ -149,6 +151,18 @@ services:
       JWT_SECRET: my_super_secret_key
     depends_on:
       - mysql
+  frontend:
+    build:
+      context: ./myheart-frontend
+    container_name: myheart-frontend
+    ports:
+      - "4173:4173"
+    volumes:
+      - ./myheart-frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0 --port 4173
+    depends_on:
+      - api-gateway
 
   mysql:
     image: mysql:8.0

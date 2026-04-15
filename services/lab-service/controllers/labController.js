@@ -1,5 +1,6 @@
 const axios = require("axios")
 const LabTest = require("../models/LabTest")
+const path = require("path")
 
 const CATALOG_SERVICE_URL = process.env.CATALOG_SERVICE_URL || "http://catalog-service:5008"
 
@@ -82,7 +83,12 @@ exports.getPatientTests = async (req, res) => {
 
 exports.uploadResult = async (req, res) => {
   try {
-    const { result, file_url } = req.body
+    const result = req.body.result || ""
+    let file_url = req.body.file_url || ""
+
+    if (req.file) {
+      file_url = `/uploads/${req.file.filename}`
+    }
 
     const test = await LabTest.findByIdAndUpdate(
       req.params.id,
@@ -99,6 +105,14 @@ exports.uploadResult = async (req, res) => {
     }
 
     res.json(test)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+exports.getAllLabTests = async (req, res) => {
+  try {
+    const tests = await LabTest.find().sort({ createdAt: -1 })
+    res.json(tests)
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

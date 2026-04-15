@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import api from "../api/axios"
+import api from "../../api/axios"
 
 function DoctorLabsPage() {
   const navigate = useNavigate()
@@ -209,6 +209,15 @@ function DoctorLabsPage() {
   const completedCount = labs.filter(
     (lab) => (lab.result || "").trim() !== ""
   ).length
+  const buildLabFileUrl = (fileUrl) => {
+  if (!fileUrl) return null
+
+  if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) {
+    return fileUrl
+  }
+
+  return `http://localhost:5000/api/labs${fileUrl}`
+}
 
   const formatLongDate = (date) => {
     return new Date(date).toLocaleDateString("en-GB", {
@@ -479,6 +488,16 @@ function DoctorLabsPage() {
                             {lab.result && (
                               <p style={labResultStyle}>Result: {lab.result}</p>
                             )}
+                            {lab.file_url && (
+  <a
+    href={buildLabFileUrl(lab.file_url)}
+    target="_blank"
+    rel="noreferrer"
+    style={labFileButtonStyle}
+  >
+    Download PDF
+  </a>
+)}
                           </div>
                         </div>
 
@@ -826,6 +845,19 @@ const avatarCircleStyle = {
   alignItems: "center",
   justifyContent: "center",
   fontWeight: "700",
+}
+const labFileButtonStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  marginTop: "10px",
+  padding: "10px 14px",
+  borderRadius: "12px",
+  background: "#EEEDFE",
+  color: "#3C3489",
+  fontWeight: "700",
+  textDecoration: "none",
+  border: "1px solid #CFC8FA",
 }
 
 const labTitleStyle = {

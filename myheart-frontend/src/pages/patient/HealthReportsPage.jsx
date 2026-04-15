@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import api from "../api/axios"
-import PatientSidebar from "../components/PatientSidebar"
+import api from "../../api/axios"
+import PatientSidebar from "../../components/sidebars/PatientSidebar"
 
 if (!document.querySelector('link[href*="Plus+Jakarta+Sans"]')) {
   const link = document.createElement("link")
@@ -30,23 +30,24 @@ const C = {
   blueText: "#365BBA",
   yellowBg: "#FFF3CC",
   yellowText: "#B7791F",
-  redBg: "#FFE1E1",
   redText: "#C94E4E",
 }
 
 const F = "'Plus Jakarta Sans', sans-serif"
 
-function LabResultsPage() {
+function HealthReportsPage() {
   const navigate = useNavigate()
   const token = localStorage.getItem("token")
 
   const [profile, setProfile] = useState(null)
-  const [labResults, setLabResults] = useState([])
+  const [history, setHistory] = useState([])
   const [appointments, setAppointments] = useState([])
   const [services, setServices] = useState([])
-  const [selectedLab, setSelectedLab] = useState(null)
+  const [doctors, setDoctors] = useState([])
+  const [selectedRecord, setSelectedRecord] = useState(null)
 
   const [loading, setLoading] = useState(true)
+  const [detailLoading, setDetailLoading] = useState(false)
   const [error, setError] = useState("")
 
   useEffect(() => {
@@ -64,25 +65,28 @@ function LabResultsPage() {
 
         const patientId = user?.reference_id || user?.id
 
-        const [labsRes, appointmentsRes, catalogRes] = await Promise.allSettled([
-          api.get(`/labs/patient/${patientId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          api.get("/appointments/me", {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          api.get("/catalog", {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ])
+        const [historyRes, appointmentsRes, catalogRes, doctorsRes] =
+          await Promise.allSettled([
+            api.get(`/consultation-records/patient/${patientId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            api.get("/appointments/me", {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            api.get("/catalog", {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            api.get("/doctors", {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+          ])
 
-        const labsData =
-          labsRes.status === "fulfilled" && Array.isArray(labsRes.value.data)
-            ? labsRes.value.data
+        const historyData =
+          historyRes.status === "fulfilled" && Array.isArray(historyRes.value.data)
+            ? historyRes.value.data
             : []
-console.log("LAB RESULTS RAW:", labsData)
-console.log("FIRST LAB:", labsData[0])
-        setLabResults(labsData)
+
+        setHistory(historyData)
         setAppointments(
           appointmentsRes.status === "fulfilled" &&
             Array.isArray(appointmentsRes.value.data)
@@ -94,13 +98,19 @@ console.log("FIRST LAB:", labsData[0])
             ? catalogRes.value.data
             : []
         )
+        setDoctors(
+          doctorsRes.status === "fulfilled" && Array.isArray(doctorsRes.value.data)
+            ? doctorsRes.value.data
+            : []
+        )
 
-        if (labsData.length > 0) {
-          setSelectedLab(labsData[0])
+        if (historyData.length > 0) {
+          setSelectedRecord(historyData[0])
+          await fetchAppointmentRecord(historyData[0].appointment_id)
         }
       } catch (err) {
         console.error(err)
-        setError("Failed to load lab results")
+        setError("Failed to load health reports")
       } finally {
         setLoading(false)
       }
@@ -109,52 +119,38 @@ console.log("FIRST LAB:", labsData[0])
     fetchData()
   }, [token])
 
-  const getStatusStyle = (status) => {
-    const s = String(status || "").toUpperCase()
-
-    switch (s) {
-      case "COMPLETED":
-      case "READY":
-      case "VALIDATED":
-        return {
-          background: C.greenBg,
-          color: C.green,
-        }
-      case "PENDING":
-      case "IN_PROGRESS":
-        return {
-          background: C.yellowBg,
-          color: C.yellowText,
-        }
-      case "CANCELLED":
-        return {
-          background: C.redBg,
-          color: C.redText,
-        }
-      default:
-        return {
-          background: C.blueBg,
-          color: C.blueText,
-        }
+  const fetchAppointmentRecord = async (appointmentId) => {
+    try {
+      setDetailLoading(true)
+      const res = await api.get(`/consultation-records/appointment/${appointmentId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setSelectedRecord(res.data || null)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setDetailLoading(false)
     }
   }
 
-  
-  const enrichedLabs = useMemo(() => {
-    return labResults
-      .map((lab) => {
+  const enrichedHistory = useMemo(() => {
+    return history
+      .map((record) => {
         const appointment = appointments.find(
-          (a) => String(a.id) === String(lab.appointment_id)
+          (a) => String(a.id) === String(record.appointment_id)
         )
-
         const service = services.find(
           (s) => String(s.id) === String(appointment?.service_id)
         )
+        const doctor = doctors.find(
+          (d) => String(d.id) === String(record.doctor_id || appointment?.doctor_id)
+        )
 
         return {
-          ...lab,
+          ...record,
           appointment,
           service,
+          doctor,
         }
       })
       .sort(
@@ -162,35 +158,34 @@ console.log("FIRST LAB:", labsData[0])
           new Date(b.created_at || 0).getTime() -
           new Date(a.created_at || 0).getTime()
       )
-  }, [labResults, appointments, services])
+  }, [history, appointments, services, doctors])
 
   const enrichedSelected = useMemo(() => {
-    if (!selectedLab) return null
+    if (!selectedRecord) return null
 
     const appointment = appointments.find(
-      (a) => String(a.id) === String(selectedLab.appointment_id)
+      (a) => String(a.id) === String(selectedRecord.appointment_id)
     )
-
     const service = services.find(
       (s) => String(s.id) === String(appointment?.service_id)
     )
+    const doctor = doctors.find(
+      (d) => String(d.id) === String(selectedRecord.doctor_id || appointment?.doctor_id)
+    )
 
     return {
-      ...selectedLab,
+      ...selectedRecord,
       appointment,
       service,
+      doctor,
     }
-  }, [selectedLab, appointments, services])
+  }, [selectedRecord, appointments, services, doctors])
 
-  const readyCount = enrichedLabs.filter((l) =>
-    ["COMPLETED", "READY", "VALIDATED"].includes(
-      String(l.status || "").toUpperCase()
-    )
-  ).length
+  const totalPrescriptions = enrichedHistory.reduce((sum, r) => {
+    return sum + (Array.isArray(r.prescriptions) ? r.prescriptions.length : 0)
+  }, 0)
 
-  const pendingCount = enrichedLabs.filter((l) =>
-    ["PENDING", "IN_PROGRESS"].includes(String(l.status || "").toUpperCase())
-  ).length
+  const diagnosesCount = enrichedHistory.filter((r) => r.diagnosis).length
 
   const formatDate = (value) => {
     if (!value) return "N/A"
@@ -224,7 +219,7 @@ console.log("FIRST LAB:", labsData[0])
   if (loading) {
     return (
       <div style={S.loadingPage}>
-        <div style={S.loadingCard}>Loading lab results...</div>
+        <div style={S.loadingCard}>Loading health reports...</div>
       </div>
     )
   }
@@ -235,35 +230,35 @@ console.log("FIRST LAB:", labsData[0])
         * { box-sizing: border-box; }
 
         @media (max-width: 1180px) {
-          .lr-shell {
+          .hr-shell {
             grid-template-columns: 1fr !important;
           }
 
-          .lr-main-grid,
-          .lr-stats-grid {
+          .hr-main-grid,
+          .hr-stats-grid {
             grid-template-columns: 1fr !important;
           }
         }
 
         @media (max-width: 760px) {
-          .lr-page {
+          .hr-page {
             padding: 14px !important;
           }
 
-          .lr-record-row {
+          .hr-record-row {
             flex-direction: column !important;
             align-items: flex-start !important;
           }
 
-          .lr-detail-grid {
+          .hr-detail-grid {
             grid-template-columns: 1fr !important;
           }
         }
       `}</style>
 
-      <div style={S.page} className="lr-page">
-        <div style={S.shell} className="lr-shell">
-          <PatientSidebar active="labs" profile={profile} />
+      <div style={S.page} className="hr-page">
+        <div style={S.shell} className="hr-shell">
+          <PatientSidebar active="reports" profile={profile} />
 
           <main style={S.content}>
             <div style={S.topDate}>{todayLabel}</div>
@@ -272,11 +267,11 @@ console.log("FIRST LAB:", labsData[0])
               <div style={S.heroGlow} />
               <div style={S.heroContent}>
                 <div>
-                  <div style={S.heroEyebrow}>PATIENT LAB RESULTS</div>
-                  <h1 style={S.heroTitle}>Lab Results</h1>
+                  <div style={S.heroEyebrow}>PATIENT HEALTH RECORD</div>
+                  <h1 style={S.heroTitle}>Health Reports</h1>
                   <p style={S.heroSubtitle}>
-                    Review all lab tests linked to your appointments and open
-                    each result in detail.
+                    View your consultation history, diagnoses, prescriptions, and
+                    doctor notes in one place.
                   </p>
                 </div>
 
@@ -291,74 +286,73 @@ console.log("FIRST LAB:", labsData[0])
 
             {error ? <div style={S.errorBox}>{error}</div> : null}
 
-            <section style={S.statsGrid} className="lr-stats-grid">
+            <section style={S.statsGrid} className="hr-stats-grid">
               <div style={S.statCard}>
-                <div style={S.statLabel}>TOTAL TESTS</div>
-                <div style={S.statValue}>{enrichedLabs.length}</div>
-                <div style={S.statSub}>all lab entries</div>
+                <div style={S.statLabel}>RECORDS</div>
+                <div style={S.statValue}>{enrichedHistory.length}</div>
+                <div style={S.statSub}>consultation entries</div>
               </div>
 
               <div style={S.statCard}>
-                <div style={S.statLabel}>READY</div>
-                <div style={S.statValue}>{readyCount}</div>
-                <div style={S.statSub}>results available</div>
+                <div style={S.statLabel}>DIAGNOSES</div>
+                <div style={S.statValue}>{diagnosesCount}</div>
+                <div style={S.statSub}>records with diagnosis</div>
               </div>
 
               <div style={S.statCard}>
-                <div style={S.statLabel}>PENDING</div>
-                <div style={S.statValue}>{pendingCount}</div>
-                <div style={S.statSub}>still processing</div>
+                <div style={S.statLabel}>PRESCRIPTIONS</div>
+                <div style={S.statValue}>{totalPrescriptions}</div>
+                <div style={S.statSub}>medicines prescribed</div>
               </div>
             </section>
 
-            <section style={S.mainGrid} className="lr-main-grid">
+            <section style={S.mainGrid} className="hr-main-grid">
               <div style={S.listCard}>
                 <div style={S.sectionHeader}>
                   <div>
-                    <div style={S.sectionEyebrow}>LAB HISTORY</div>
-                    <div style={S.sectionTitle}>All Tests</div>
+                    <div style={S.sectionEyebrow}>MEDICAL HISTORY</div>
+                    <div style={S.sectionTitle}>Consultation Records</div>
                   </div>
                 </div>
 
-                {enrichedLabs.length === 0 ? (
-                  <div style={S.emptyState}>No lab results found yet.</div>
+                {enrichedHistory.length === 0 ? (
+                  <div style={S.emptyState}>No health records found yet.</div>
                 ) : (
                   <div style={S.listWrap}>
-                    {enrichedLabs.map((lab) => {
+                    {enrichedHistory.map((record) => {
                       const active =
-                        String(enrichedSelected?._id) === String(lab.id)
+                        String(enrichedSelected?.id) === String(record.id)
 
                       return (
                         <button
-                          key={lab._id || `${lab.appointment_id}-${lab.createdAt}`}
-                          onClick={() => setSelectedLab(lab)}
+                          key={record.id}
+                          onClick={() => fetchAppointmentRecord(record.appointment_id)}
                           style={{
                             ...S.recordRow,
                             ...(active ? S.recordRowActive : {}),
                           }}
-                          className="lr-record-row"
+                          className="hr-record-row"
                         >
                           <div style={S.recordLeft}>
                             <div style={S.recordTitle}>
-                              {lab.lab_test_name || lab.lab_test_code || "Unnamed lab test"}
+                              {record.diagnosis || "No diagnosis"}
                             </div>
                             <div style={S.recordMeta}>
-                              Appointment #{lab.appointment_id || "N/A"} · {formatDate(lab.createdAt)}
+                              Appointment #{record.appointment_id} ·{" "}
+                              {formatDate(record.created_at)}
                             </div>
                             <div style={S.recordSub}>
-                              {lab.service?.name || "Unknown service"} ·{" "}
-                              {lab.service?.department || "Unknown department"}
+                              {record.service?.name || "Unknown service"} ·{" "}
+                              {record.service?.department || "Unknown department"}
                             </div>
                           </div>
 
                           <div style={S.recordRight}>
-                            <span
-                              style={{
-                                ...S.statusPill,
-                                ...getStatusStyle(lab.status),
-                              }}
-                            >
-                              {lab.status || "N/A"}
+                            <span style={S.countPill}>
+                              {Array.isArray(record.prescriptions)
+                                ? record.prescriptions.length
+                                : 0}{" "}
+                              meds
                             </span>
                           </div>
                         </button>
@@ -372,47 +366,30 @@ console.log("FIRST LAB:", labsData[0])
                 <div style={S.sectionHeader}>
                   <div>
                     <div style={S.sectionEyebrow}>DETAILS</div>
-                    <div style={S.sectionTitle}>Selected Result</div>
+                    <div style={S.sectionTitle}>Selected Report</div>
                   </div>
                 </div>
 
-                {!enrichedSelected ? (
-                  <div style={S.emptyState}>Select a test to see details.</div>
+                {detailLoading ? (
+                  <div style={S.emptyState}>Loading record details...</div>
+                ) : !enrichedSelected ? (
+                  <div style={S.emptyState}>Select a record to see details.</div>
                 ) : (
                   <div style={S.detailWrap}>
-                    <div style={S.detailGrid} className="lr-detail-grid">
+                    <div style={S.detailGrid} className="hr-detail-grid">
                       <div style={S.infoBlock}>
-                        <div style={S.infoLabel}>Test Type</div>
+                        <div style={S.infoLabel}>Diagnosis</div>
                         <div style={S.infoValue}>
-                          {
-  enrichedSelected.lab_test_name ||
-  enrichedSelected.lab_test_code ||
-  "N/A"
-}
-                        </div>
-                      </div>
-                      <div style={S.infoBlock}>
-  <div style={S.infoLabel}>Category</div>
-  <div style={S.infoValue}>
-    {enrichedSelected.lab_test_category || "N/A"}
-  </div>
-</div>
-
-                      <div style={S.infoBlock}>
-                        <div style={S.infoLabel}>Status</div>
-                        <div style={S.infoValue}>
-                          {enrichedSelected.status || "N/A"}
+                          {enrichedSelected.diagnosis || "N/A"}
                         </div>
                       </div>
 
-
                       <div style={S.infoBlock}>
-                        <div style={S.infoLabel}>Date</div>
+                        <div style={S.infoLabel}>Doctor</div>
                         <div style={S.infoValue}>
-                          {formatDateTime(
-                            enrichedSelected.appointment?.appointment_date ||
-                              enrichedSelected.created_at
-                          )}
+                          {enrichedSelected.doctor
+                            ? `Dr. ${enrichedSelected.doctor.first_name} ${enrichedSelected.doctor.last_name}`
+                            : "N/A"}
                         </div>
                       </div>
 
@@ -424,18 +401,45 @@ console.log("FIRST LAB:", labsData[0])
                       </div>
 
                       <div style={S.infoBlock}>
-                        <div style={S.infoLabel}>Department</div>
+                        <div style={S.infoLabel}>Date</div>
                         <div style={S.infoValue}>
-                          {enrichedSelected.service?.department || "N/A"}
+                          {formatDateTime(
+                            enrichedSelected.appointment?.appointment_date ||
+                              enrichedSelected.created_at
+                          )}
                         </div>
                       </div>
                     </div>
 
                     <div style={S.noteCard}>
-                      <div style={S.noteTitle}>Result</div>
+                      <div style={S.noteTitle}>Clinical Notes</div>
                       <div style={S.noteText}>
-                        {enrichedSelected.result || "Not uploaded yet."}
+                        {enrichedSelected.clinical_notes || "No clinical notes."}
                       </div>
+                    </div>
+
+                    <div style={S.noteCard}>
+                      <div style={S.noteTitle}>Doctor Notes</div>
+                      <div style={S.noteText}>
+                        {enrichedSelected.notes || "No doctor notes."}
+                      </div>
+                    </div>
+
+                    <div style={S.noteCard}>
+                      <div style={S.noteTitle}>Prescriptions</div>
+                      {Array.isArray(enrichedSelected.prescriptions) &&
+                      enrichedSelected.prescriptions.length > 0 ? (
+                        <div style={S.prescriptionList}>
+                          {enrichedSelected.prescriptions.map((item, index) => (
+                            <div key={index} style={S.prescriptionItem}>
+                              <span style={S.prescriptionIcon}>💊</span>
+                              <span>{item}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={S.noteText}>No prescriptions.</div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -648,13 +652,16 @@ const S = {
   recordRight: {
     flexShrink: 0,
   },
-  statusPill: {
-    padding: "6px 12px",
-    borderRadius: "999px",
-    fontWeight: "800",
-    fontSize: "12px",
+  countPill: {
     display: "inline-flex",
     alignItems: "center",
+    padding: "8px 12px",
+    borderRadius: "999px",
+    background: C.white,
+    border: `1px solid ${C.border}`,
+    color: C.blueText,
+    fontSize: "12px",
+    fontWeight: "800",
   },
   detailWrap: {
     display: "grid",
@@ -703,6 +710,32 @@ const S = {
     lineHeight: 1.6,
     whiteSpace: "pre-wrap",
   },
+  prescriptionList: {
+    display: "grid",
+    gap: "10px",
+  },
+  prescriptionItem: {
+    background: C.white,
+    border: `1px solid ${C.border}`,
+    borderRadius: "14px",
+    padding: "12px 14px",
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    color: C.text,
+    fontWeight: "700",
+    fontSize: "14px",
+  },
+  prescriptionIcon: {
+    width: "30px",
+    height: "30px",
+    borderRadius: "10px",
+    background: C.greenBg,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
   emptyState: {
     background: C.lavenderSoft,
     border: `1px dashed ${C.borderStrong}`,
@@ -730,4 +763,4 @@ const S = {
   },
 }
 
-export default LabResultsPage
+export default HealthReportsPage

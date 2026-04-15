@@ -1,7 +1,7 @@
 const express = require("express")
 const router = express.Router()
 
-const { createPatient, getPatient, updatePatient } = require("../controllers/patientController")
+const { createPatient, getPatient, updatePatient,getPatients } = require("../controllers/patientController")
 const { verifyToken } = require("../middleware/authMiddleware")
 const { authorizeRole } = require("../middleware/roleMiddleware")
 
@@ -18,6 +18,7 @@ router.post(
 )
 
 router.get("/:id", verifyToken, getPatient)
+router.get("/", verifyToken, authorizeRole("ADMIN"), getPatients)
 
 router.put("/:id", verifyToken, updatePatient)
 

@@ -164,6 +164,16 @@ services:
     depends_on:
       - api-gateway
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: myheart-prometheus
+    ports:
+    - "9090:9090"
+    volumes:
+    - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+    - api-gateway
+
   mysql:
     image: mysql:8.0
     container_name: myheart-mysql

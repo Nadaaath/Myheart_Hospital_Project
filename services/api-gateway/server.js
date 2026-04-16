@@ -22,6 +22,12 @@ const {
 
 const app = express()
 
+const {
+  register,
+  httpRequestsTotal,
+  httpRequestDurationSeconds,
+} = require("./metrics")
+
 app.use(cors())
 app.use(express.json())
 app.use(morgan("dev"))
@@ -94,6 +100,33 @@ app.use(
 )
 app.use("/api/labs", buildProxy(LAB_SERVICE_URL, "/labs"))
 app.use("/api/catalog", buildProxy(CATALOG_SERVICE_URL, "/services"))
+
+app.use((req, res, next) => {
+  const end = httpRequestDurationSeconds.startTimer()
+
+  res.on("finish", () => {
+    const route = req.route?.path || req.path
+
+    httpRequestsTotal.inc({
+      method: req.method,
+      route,
+      status_code: res.statusCode,
+    })
+
+    end({
+      method: req.method,
+      route,
+      status_code: res.statusCode,
+    })
+  })
+
+  next()
+})
+
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", register.contentType)
+  res.end(await register.metrics())
+})
 
 const PORT = process.env.PORT || 5000
 

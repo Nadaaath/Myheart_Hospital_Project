@@ -9,3 +9,7 @@ scrape_configs:
   - job_name: "appointment-service"
     static_configs:
       - targets: ["appointment-service:5004"]
+  
+  - job_name: "auth-service"
+    static_configs:
+      - targets: ["auth-service:5001"]

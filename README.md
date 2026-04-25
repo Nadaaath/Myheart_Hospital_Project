@@ -391,9 +391,7 @@ The CI pipeline verifies that:
 * the main gateway routes are reachable after startup
 
 This setup provides a first level of automated quality assurance for the platform.
-Add this section to your README, ideally **after “Observability / Continuous Integration” and before “How to Demonstrate the Project”**.
 
-````md
 ## Kubernetes Deployment
 
 In addition to the Docker Compose setup, the project also includes a Kubernetes deployment configuration for the main microservices.

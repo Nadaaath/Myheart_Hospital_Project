@@ -391,6 +391,100 @@ The CI pipeline verifies that:
 * the main gateway routes are reachable after startup
 
 This setup provides a first level of automated quality assurance for the platform.
+Add this section to your README, ideally **after “Observability / Continuous Integration” and before “How to Demonstrate the Project”**.
+
+````md
+## Kubernetes Deployment
+
+In addition to the Docker Compose setup, the project also includes a Kubernetes deployment configuration for the main microservices.
+
+### Kubernetes resources used
+The Kubernetes setup includes:
+
+- **Deployments** for service execution
+- **Services** for internal/external exposure
+- **ConfigMaps** for non-sensitive configuration
+- **Secrets** for sensitive values such as JWT secrets
+- **Readiness probes** to verify when a service is ready to receive traffic
+- **Liveness probes** to detect unhealthy containers and restart them automatically
+
+### Covered services
+The Kubernetes manifests currently cover the main backend services, including:
+
+- `api-gateway`
+- `auth-service`
+- `patient-service`
+- `doctor-service`
+- `appointment-service`
+- `consultation-records-service`
+- `billing-service`
+- `catalog-service`
+- `lab-service`
+
+### Deployment structure
+The manifests are stored in the `k8s/` folder and are organized by service.
+
+Typical manifest types include:
+- `*-deployment.yaml`
+- `*-service.yaml`
+- `*-configmap.yaml`
+- `*-secret.yaml`
+
+### Example commands
+
+Apply all manifests:
+
+```bash
+kubectl apply -f k8s/
+````
+
+Check running pods:
+
+```bash
+kubectl get pods
+```
+
+Check services:
+
+```bash
+kubectl get svc
+```
+
+Check deployments:
+
+```bash
+kubectl get deployments
+```
+
+### Example verification
+
+The Kubernetes deployment was validated by checking:
+
+* pod status (`Running`, `Ready`)
+* service exposure
+* successful gateway-based access to the application
+* readiness/liveness probe integration on services
+
+### Notes
+
+* the current working deployment is running in the **default** namespace
+* service communication relies on Kubernetes service discovery
+* this Kubernetes setup complements the Docker Compose deployment 
+
+```md
+## Engineering Improvements
+
+Compared to a basic academic CRUD microservices project, MyHeart was extended with:
+
+- Dockerized multi-service deployment
+- Kubernetes manifests for core microservices
+- API Gateway-based routing
+- Prometheus metrics for key services
+- Grafana dashboards for traffic and latency visualization
+- GitHub Actions CI
+- smoke testing through the running stack
+
+These additions make the platform closer to a production-oriented microservices system.
 
 ---
 

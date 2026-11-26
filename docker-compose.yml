@@ -1,10 +1,11 @@
+
 services:
   api-gateway:
     build:
       context: ./services/api-gateway
     container_name: api-gateway
-    ports:
-      - "5000:5000"
+    expose:
+      - "5000"
     environment:
       PORT: "5000"
       AUTH_SERVICE_URL: http://auth-service:5001
@@ -28,60 +29,56 @@ services:
   auth-service:
     build:
       context: ./services/auth-service
-      args:
-        DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_auth
     container_name: auth-service
-    ports:
-      - "5001:5001"
+    expose:
+      - "5001"
     environment:
       PORT: "5001"
-      DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_auth
-      JWT_SECRET: my_super_secret_key
+      DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD:?required}@mysql:3306/myheart_auth
+      JWT_SECRET: ${JWT_SECRET:?required}
     depends_on:
       - mysql
 
   patient-service:
     build:
       context: ./services/patient-service
-      args:
-        DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_patient
     container_name: patient-service
-    ports:
-      - "5002:5002"
+    expose:
+      - "5002"
     environment:
       PORT: "5002"
-      DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_patient
-      JWT_SECRET: my_super_secret_key
+      DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD:?required}@mysql:3306/myheart_patient
+      JWT_SECRET: ${JWT_SECRET:?required}
+      AUTH_SERVICE_URL: http://auth-service:5001
     depends_on:
       - mysql
+      - auth-service
 
   doctor-service:
     build:
       context: ./services/doctor-service
-      args:
-        DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_doctor
     container_name: doctor-service
-    ports:
-      - "5003:5003"
+    expose:
+      - "5003"
     environment:
       PORT: "5003"
-      DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_doctor
-      JWT_SECRET: my_super_secret_key
+      DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD:?required}@mysql:3306/myheart_doctor
+      JWT_SECRET: ${JWT_SECRET:?required}
+      AUTH_SERVICE_URL: http://auth-service:5001
     depends_on:
       - mysql
+      - auth-service
 
   appointment-service:
     build:
       context: ./services/appointment-service
-      args:
-        DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_appointment
     container_name: appointment-service
-    ports:
-      - "5004:5004"
+    expose:
+      - "5004"
     environment:
       PORT: "5004"
-      DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_appointment
-      JWT_SECRET: my_super_secret_key
+      DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD:?required}@mysql:3306/myheart_appointment
+      JWT_SECRET: ${JWT_SECRET:?required}
       PATIENT_SERVICE_URL: http://patient-service:5002
       DOCTOR_SERVICE_URL: http://doctor-service:5003
       CONSULTATION_SERVICE_URL: http://consultation-records-service:5005
@@ -93,15 +90,13 @@ services:
   consultation-records-service:
     build:
       context: ./services/consultation-records-service
-      args:
-        DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_medical
     container_name: consultation-records-service
-    ports:
-      - "5005:5005"
+    expose:
+      - "5005"
     environment:
       PORT: "5005"
-      DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_medical
-      JWT_SECRET: my_super_secret_key
+      DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD:?required}@mysql:3306/myheart_medical
+      JWT_SECRET: ${JWT_SECRET:?required}
     depends_on:
       - mysql
 
@@ -109,30 +104,28 @@ services:
     build:
       context: ./services/lab-service
     container_name: lab-service
-    ports:
-      - "5006:5006"
+    expose:
+      - "5006"
     environment:
       PORT: "5006"
       MONGO_URI: mongodb://mongodb:27017/myheart_lab
-      JWT_SECRET: my_super_secret_key
+      JWT_SECRET: ${JWT_SECRET:?required}
       CATALOG_SERVICE_URL: http://catalog-service:5008
     volumes:
-     - ./services/lab-service/uploads:/app/uploads
+      - ./services/lab-service/uploads:/app/uploads
     depends_on:
       - mongodb
 
   billing-service:
     build:
       context: ./services/billing-service
-      args:
-        DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_billing
     container_name: billing-service
-    ports:
-      - "5007:5007"
+    expose:
+      - "5007"
     environment:
       PORT: "5007"
-      DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_billing
-      JWT_SECRET: my_super_secret_key
+      DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD:?required}@mysql:3306/myheart_billing
+      JWT_SECRET: ${JWT_SECRET:?required}
       CATALOG_SERVICE_URL: http://catalog-service:5008
     depends_on:
       - mysql
@@ -140,38 +133,37 @@ services:
   catalog-service:
     build:
       context: ./services/catalog-service
-      args:
-        DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_catalog
     container_name: catalog-service
-    ports:
-      - "5008:5008"
+    expose:
+      - "5008"
     environment:
       PORT: "5008"
-      DATABASE_URL: mysql://root:Red24Red@mysql:3306/myheart_catalog
-      JWT_SECRET: my_super_secret_key
+      DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD:?required}@mysql:3306/myheart_catalog
+      JWT_SECRET: ${JWT_SECRET:?required}
     depends_on:
       - mysql
+
   frontend:
     build:
       context: ./myheart-frontend
     container_name: myheart-frontend
     ports:
-      - "4173:4173"
+      - "127.0.0.1:4173:80"
+    environment:
+      API_GATEWAY_URL: http://api-gateway:5000
     volumes:
       - ./myheart-frontend:/app
       - /app/node_modules
-    command: npm run dev -- --host 0.0.0.0 --port 4173
     depends_on:
       - api-gateway
+
 
   mysql:
     image: mysql:8.0
     container_name: myheart-mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: Red24Red
-    ports:
-      - "3307:3306"
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?required}
     volumes:
       - mysql_data:/var/lib/mysql
       - ./db-init/mysql:/docker-entrypoint-initdb.d
@@ -180,11 +172,12 @@ services:
     image: mongo:7
     container_name: myheart-mongodb
     restart: always
-    ports:
-      - "27017:27017"
     volumes:
       - mongo_data:/data/db
 
 volumes:
   mysql_data:
+    name: myheart-azure-dev-mysql-data
   mongo_data:
+
+ 

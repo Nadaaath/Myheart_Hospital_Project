@@ -198,7 +198,7 @@ console.log("FIRST LAB:", labsData[0])
     return fileUrl
   }
 
-  return `http://localhost:5000/api/labs${fileUrl}`
+  return `/api/labs${fileUrl}`
 }
 
   const formatDate = (value) => {

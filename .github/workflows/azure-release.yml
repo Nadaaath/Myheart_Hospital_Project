@@ -1,0 +1,283 @@
+name: MyHeart DevSecOps Release
+
+on:
+  push:
+    branches:
+      - feat/azure-container-apps
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: myheart-azure-release
+  cancel-in-progress: false
+
+env:
+  COMPOSE_PROJECT_NAME: myheart-ci
+  TRIVY_IMAGE: aquasec/trivy:0.76.2
+  SERVICES: >-
+    frontend
+    api-gateway
+    auth-service
+    patient-service
+    doctor-service
+    appointment-service
+    consultation-records-service
+    lab-service
+    billing-service
+    catalog-service
+
+jobs:
+  release:
+    name: Build, Test, Scan and Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v5
+
+      - name: Generate temporary CI secrets
+        run: |
+          MYSQL_PASSWORD=$(openssl rand -hex 32)
+          JWT_SECRET=$(openssl rand -hex 32)
+
+          echo "::add-mask::$MYSQL_PASSWORD"
+          echo "::add-mask::$JWT_SECRET"
+
+          printf 'MYSQL_ROOT_PASSWORD=%s\n' "$MYSQL_PASSWORD" > .env
+          printf 'JWT_SECRET=%s\n' "$JWT_SECRET" >> .env
+          chmod 600 .env
+
+      - name: Configure Git SHA image tags
+        run: |
+          OVERRIDE="$RUNNER_TEMP/myheart.override.yml"
+
+          echo "services:" > "$OVERRIDE"
+
+          for service in $SERVICES; do
+            printf '  %s:\n    image: myheart-ci/%s:%s\n' \
+              "$service" "$service" "$GITHUB_SHA" >> "$OVERRIDE"
+          done
+
+          echo "COMPOSE_FILE=docker-compose.yml:$OVERRIDE" >> "$GITHUB_ENV"
+
+      - name: Validate Docker Compose
+        run: docker compose config --quiet
+
+      - name: Build application images
+        run: docker compose build --pull
+
+      - name: Record built image identifiers
+        run: |
+          mkdir -p release-metadata
+
+          for service in $SERVICES; do
+            IMAGE="myheart-ci/$service:$GITHUB_SHA"
+
+            docker image inspect \
+              --format '{{.Id}}' "$IMAGE" \
+              > "release-metadata/$service.id"
+
+            echo "[PASS] Built $service"
+          done
+
+      - name: Start integration environment
+        run: docker compose up -d --no-build --pull missing
+
+      - name: Run integration smoke tests
+        run: |
+          for endpoint in \
+            /healthz \
+            /api/auth/test \
+            /api/catalog
+          do
+            curl --fail --silent --show-error \
+              --retry 20 \
+              --retry-all-errors \
+              --retry-delay 3 \
+              --max-time 10 \
+              --output /dev/null \
+              "http://localhost:4173$endpoint"
+
+            echo "[PASS] $endpoint"
+          done
+
+          for service in $SERVICES; do
+            if [ "$service" = "frontend" ]; then
+              continue
+            fi
+
+            docker compose exec -T "$service" node -e '
+              fetch("http://localhost:" + process.argv[1] + "/healthz")
+                .then(r => {
+                  if (!r.ok) process.exit(1);
+                })
+                .catch(() => process.exit(1));
+            ' "$(case "$service" in
+              api-gateway) echo 5000 ;;
+              auth-service) echo 5001 ;;
+              patient-service) echo 5002 ;;
+              doctor-service) echo 5003 ;;
+              appointment-service) echo 5004 ;;
+              consultation-records-service) echo 5005 ;;
+              lab-service) echo 5006 ;;
+              billing-service) echo 5007 ;;
+              catalog-service) echo 5008 ;;
+            esac)"
+
+            echo "[PASS] $service health check"
+          done
+
+      - name: Stop integration environment
+        run: docker compose down -v
+
+      - name: Prepare Trivy scanner
+        run: |
+          docker pull "$TRIVY_IMAGE"
+          docker volume create myheart-trivy-cache
+          mkdir -p security-reports
+
+      - name: Scan application images
+        run: |
+          FAILED=0
+
+          for service in $SERVICES; do
+            IMAGE="myheart-ci/$service:$GITHUB_SHA"
+            ARCHIVE="$PWD/security-reports/image.tar"
+
+            echo "::group::Scanning $service"
+
+            EXPECTED=$(cat "release-metadata/$service.id")
+            ACTUAL=$(docker image inspect --format '{{.Id}}' "$IMAGE")
+
+            if [ "$EXPECTED" != "$ACTUAL" ]; then
+              echo "Image identity mismatch"
+              exit 1
+            fi
+
+            docker save -o "$ARCHIVE" "$IMAGE"
+
+            if docker run --rm \
+              -v myheart-trivy-cache:/root/.cache \
+              -v "$PWD/security-reports:/reports" \
+              "$TRIVY_IMAGE" image \
+              --input /reports/image.tar \
+              --scanners vuln \
+              --severity HIGH,CRITICAL \
+              --format json \
+              --output "/reports/$service.json" \
+              --exit-code 1
+            then
+              echo "[PASS] Vulnerability gate"
+            else
+              echo "[FAIL] Vulnerability gate or scanner error"
+              FAILED=1
+            fi
+
+            if docker run --rm \
+              -v myheart-trivy-cache:/root/.cache \
+              -v "$PWD/security-reports:/reports" \
+              "$TRIVY_IMAGE" image \
+              --input /reports/image.tar \
+              --scanners secret \
+              --image-config-scanners secret \
+              --format json \
+              --output /dev/null \
+              --exit-code 1
+            then
+              echo "[PASS] Secret scan"
+            else
+              echo "[FAIL] Secret gate or scanner error"
+              FAILED=1
+            fi
+
+            rm -f "$ARCHIVE"
+
+            echo "::endgroup::"
+          done
+
+          exit "$FAILED"
+
+      - name: Generate security summary
+        if: always()
+        run: |
+          echo "## Trivy security assessment" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Service | High | Critical |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---:|---:|" >> "$GITHUB_STEP_SUMMARY"
+
+          for service in $SERVICES; do
+            FILE="security-reports/$service.json"
+
+            if [ -f "$FILE" ]; then
+              HIGH=$(jq '[.Results[]?.Vulnerabilities[]? |
+                select(.Severity == "HIGH")] | length' "$FILE")
+
+              CRITICAL=$(jq '[.Results[]?.Vulnerabilities[]? |
+                select(.Severity == "CRITICAL")] | length' "$FILE")
+
+              echo "| $service | $HIGH | $CRITICAL |" \
+                >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "| $service | Not scanned | Not scanned |" \
+                >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+      - name: Upload vulnerability reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-vulnerability-reports
+          path: security-reports/*.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Authenticate to Azure using OIDC
+        if: success() && vars.MYHEART_RELEASE_ENABLED == 'true'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Authenticate to ACR
+        if: success() && vars.MYHEART_RELEASE_ENABLED == 'true'
+        env:
+          ACR_NAME: ${{ vars.ACR_NAME }}
+        run: az acr login --name "$ACR_NAME"
+
+      - name: Publish verified images to ACR
+        if: success() && vars.MYHEART_RELEASE_ENABLED == 'true'
+        env:
+          ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+        run: |
+          for service in $SERVICES; do
+            LOCAL="myheart-ci/$service:$GITHUB_SHA"
+            REMOTE="$ACR_LOGIN_SERVER/myheart/$service:$GITHUB_SHA"
+
+            EXPECTED=$(cat "release-metadata/$service.id")
+            ACTUAL=$(docker image inspect --format '{{.Id}}' "$LOCAL")
+
+            if [ "$EXPECTED" != "$ACTUAL" ]; then
+              echo "Image identity mismatch"
+              exit 1
+            fi
+
+            docker tag "$LOCAL" "$REMOTE"
+            docker push "$REMOTE"
+
+            echo "[PASS] Published $REMOTE"
+          done
+
+      - name: Cleanup
+        if: always()
+        env:
+          ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+        run: |
+          docker compose down -v || true
+          docker logout "$ACR_LOGIN_SERVER" || true
+          rm -f .env security-reports/image.tar

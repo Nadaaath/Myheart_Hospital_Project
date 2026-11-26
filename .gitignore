@@ -28,3 +28,6 @@ prisma/dev.db
 
 # Docker overrides
 docker-compose.override.yml
+# Runtime lab uploads
+/services/lab-service/uploads/
+/security-reports/

@@ -1,18 +1,16 @@
-FROM node:20-slim
+FROM node:22-trixie-slim
 
 WORKDIR /app
 
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 COPY . .
 
-ARG DATABASE_URL
-ENV DATABASE_URL=$DATABASE_URL
 
-RUN npx prisma generate
+RUN DATABASE_URL="mysql://dummy:dummy@localhost:3306/placeholder" npx prisma generate
 
 EXPOSE 5003
 

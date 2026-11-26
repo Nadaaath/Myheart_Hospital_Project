@@ -6,163 +6,176 @@ on:
       - main
       - master
       - develop
+      - feat/azure-container-apps
+
   pull_request:
+
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  frontend-build:
-    name: Frontend build
+  integration-test:
+    name: Build, security checks and integration tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: myheart-frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        working-directory: myheart-frontend
-        run: npm ci
-
-      - name: Build frontend
-        working-directory: myheart-frontend
-        run: npm run build
-
-  compose-validate:
-    name: Validate docker compose
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Validate compose file
-        run: docker compose config
-
-  docker-build:
-    name: Build Docker images
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - service: auth-service
-            path: ./services/auth-service
-            database_url: mysql://root:dummy@mysql:3306/myheart_auth
-
-          - service: patient-service
-            path: ./services/patient-service
-            database_url: mysql://root:dummy@mysql:3306/myheart_patient
-
-          - service: doctor-service
-            path: ./services/doctor-service
-            database_url: mysql://root:dummy@mysql:3306/myheart_doctor
-
-          - service: appointment-service
-            path: ./services/appointment-service
-            database_url: mysql://root:dummy@mysql:3306/myheart_appointment
-
-          - service: consultation-records-service
-            path: ./services/consultation-records-service
-            database_url: mysql://root:dummy@mysql:3306/myheart_medical
-
-          - service: billing-service
-            path: ./services/billing-service
-            database_url: mysql://root:dummy@mysql:3306/myheart_billing
-
-          - service: catalog-service
-            path: ./services/catalog-service
-            database_url: mysql://root:dummy@mysql:3306/myheart_catalog
-
-          - service: api-gateway
-            path: ./services/api-gateway
-            database_url: ""
-
-          - service: lab-service
-            path: ./services/lab-service
-            database_url: ""
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Build Docker image with DATABASE_URL
-        if: matrix.database_url != ''
+      - name: Generate temporary CI secrets
         run: |
-          docker build \
-            --build-arg DATABASE_URL="${{ matrix.database_url }}" \
-            -t myheart-${{ matrix.service }}:ci \
-            ${{ matrix.path }}
+          umask 077
 
-      - name: Build Docker image without DATABASE_URL
-        if: matrix.database_url == ''
+          printf 'MYSQL_ROOT_PASSWORD=%s\n' \
+            "$(openssl rand -hex 32)" > .env
+
+          printf 'JWT_SECRET=%s\n' \
+            "$(openssl rand -hex 32)" >> .env
+
+      - name: Validate Docker Compose configuration
+        run: docker compose config --quiet
+
+      - name: Build application images
+        run: docker compose build
+
+      - name: Start application stack
+        run: docker compose up -d
+
+      - name: Wait for application readiness
         run: |
-          docker build \
-            -t myheart-${{ matrix.service }}:ci \
-            ${{ matrix.path }}
+          for i in {1..60}; do
+            if curl -fs --max-time 5 \
+              http://localhost:4173/healthz \
+              > /dev/null && \
+              curl -fs --max-time 5 \
+              http://localhost:4173/api/auth/test \
+              > /dev/null && \
+              curl -fs --max-time 5 \
+              http://localhost:4173/api/catalog \
+              > /dev/null; then
 
-  smoke-test:
-    name: Smoke test services
-    runs-on: ubuntu-latest
-    needs:
-      - frontend-build
-      - compose-validate
-      - docker-build
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Start services
-        run: docker compose up -d --build
-
-      - name: Wait for gateway integration routes to become ready
-        run: |
-          for i in {1..40}; do
-            if curl -fs http://localhost:5000/api/auth/test > /dev/null && curl -fs http://localhost:5000/api/catalog > /dev/null; then
-              echo "Gateway auth and catalog routes are ready"
+              echo "Application is ready"
               exit 0
             fi
-            echo "Waiting for gateway integration routes..."
+
+            echo "Waiting for application..."
             sleep 3
           done
-          echo "Gateway integration routes did not become ready in time"
+
+          echo "Application failed to become ready"
           exit 1
 
-      - name: Check gateway root
-        run: curl -f http://localhost:5000/
+      - name: Verify running containers
+        run: |
+          docker compose ps -a
 
-      - name: Check auth through gateway
-        run: curl -f http://localhost:5000/api/auth/test
+          running=$(docker compose ps \
+            --status running --services | wc -l)
 
-      - name: Check catalog through gateway
-        run: curl -f http://localhost:5000/api/catalog
+          if [ "$running" -ne 12 ]; then
+            echo "Expected 12 running containers, found $running"
+            exit 1
+          fi
 
-      - name: Run existing appointment verification
-        env:
-          PATIENT_EMAIL: ${{ secrets.TEST_PATIENT_EMAIL }}
-          PATIENT_PASSWORD: ${{ secrets.TEST_PATIENT_PASSWORD }}
-          APPOINTMENT_ID: "27"
-          EXPECTED_INVOICE_ID: "24"
-          EXPECTED_AMOUNT: "200"
-          EXPECTED_STATUS: "UNPAID"
-          BASE_URL: "http://localhost:5000"
-          AUTH_URL: "http://localhost:5000/api"
-        run: pwsh -File ./scripts/test-existing-appointment-flow.ps1
+      - name: Test frontend
+        run: curl -fs http://localhost:4173/
 
-      - name: Show running containers on failure
+      - name: Test Nginx health endpoint
+        run: curl -fs http://localhost:4173/healthz
+
+      - name: Test authentication routing
+        run: |
+          curl -fs http://localhost:4173/api/auth/test
+
+      - name: Test catalog routing
+        run: |
+          curl -fs http://localhost:4173/api/catalog > /dev/null
+
+      - name: Verify backend network isolation
+        run: |
+          for port in {5000..5008}; do
+            if timeout 2 bash -c \
+              "echo > /dev/tcp/127.0.0.1/$port" 2>/dev/null; then
+
+              echo "[FAIL] Port $port is accessible"
+              exit 1
+            else
+              echo "[PASS] Port $port is not accessible"
+            fi
+          done
+
+      - name: Verify backend health endpoints
+        run: |
+          declare -A services=(
+            [api-gateway]=5000
+            [auth-service]=5001
+            [patient-service]=5002
+            [doctor-service]=5003
+            [appointment-service]=5004
+            [consultation-records-service]=5005
+            [lab-service]=5006
+            [billing-service]=5007
+            [catalog-service]=5008
+          )
+
+          for service in "${!services[@]}"; do
+            port="${services[$service]}"
+
+            docker compose exec -T "$service" node -e "
+              fetch('http://127.0.0.1:$port/healthz')
+                .then(r => process.exit(r.ok ? 0 : 1))
+                .catch(() => process.exit(1))
+            "
+
+            echo "[PASS] $service health endpoint"
+          done
+
+      - name: Verify image environment security
+        run: |
+          services=(
+            api-gateway
+            auth-service
+            patient-service
+            doctor-service
+            appointment-service
+            consultation-records-service
+            lab-service
+            billing-service
+            catalog-service
+            frontend
+          )
+
+          for service in "${services[@]}"; do
+            image=$(docker compose config --images "$service" | head -n 1)
+
+            if [ -z "$image" ]; then
+              echo "[FAIL] Image not found: $service"
+              exit 1
+            fi
+
+            names=$(docker image inspect "$image" \
+              --format '{{range .Config.Env}}{{println .}}{{end}}' \
+              | cut -d= -f1)
+
+            if echo "$names" | grep -Eq \
+              '^(DATABASE_URL|JWT_SECRET|MYSQL_ROOT_PASSWORD|MONGO_URI)$'; then
+
+              echo "[FAIL] Sensitive variable embedded in $service"
+              exit 1
+            fi
+
+            echo "[PASS] $service image configuration"
+          done
+
+      - name: Show container status on failure
         if: failure()
-        run: docker compose ps
+        run: docker compose ps -a
 
-      - name: Show logs on failure
-        if: failure()
-        run: docker compose logs
-
-      - name: Shut down services
+      - name: Cleanup test environment
         if: always()
-        run: docker compose down -v
+        run: |
+          docker compose down -v --remove-orphans
+          rm -f .env

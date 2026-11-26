@@ -22,6 +22,14 @@ const {
 
 const app = express()
 
+app.get("/healthz", (req, res) => {
+    res.status(200).json({
+        status: "ok",
+        service: "api-gateway"
+    })
+})
+
+
 app.use(cors())
 app.use(express.json())
 app.use(morgan("dev"))
@@ -66,6 +74,24 @@ const buildProxy = (target, basePath) =>
       },
     },
   })
+
+app.use("/api/auth", (req, res, next) => {
+    const allowedRoutes = [
+        "POST /login",
+        "GET /test",
+        "GET /profile"
+    ]
+
+    const route = `${req.method} ${req.path}`
+
+    if (!allowedRoutes.includes(route)) {
+        return res.status(404).json({
+            message: "Route not found"
+        })
+    }
+
+    next()
+})
 
 app.use("/api/auth", buildProxy(AUTH_SERVICE_URL, "/auth"))
 app.use("/api/patients", buildProxy(PATIENT_SERVICE_URL, "/patients"))

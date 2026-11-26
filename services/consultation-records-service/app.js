@@ -6,6 +6,14 @@ const consultationRoutes = require("./routes/consultationRoutes")
 
 const app = express()
 
+app.get("/healthz", (req, res) => {
+    res.status(200).json({
+        status: "ok",
+        service: "consultation-records-service"
+    })
+})
+
+
 app.use(cors())
 app.use(express.json())
 

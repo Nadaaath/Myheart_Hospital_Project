@@ -6,6 +6,14 @@ const catalogRoutes = require("./routes/catalogRoutes")
 
 const app = express()
 
+app.get("/healthz", (req, res) => {
+    res.status(200).json({
+        status: "ok",
+        service: "catalog-service"
+    })
+})
+
+
 app.use(cors())
 app.use(express.json())
 

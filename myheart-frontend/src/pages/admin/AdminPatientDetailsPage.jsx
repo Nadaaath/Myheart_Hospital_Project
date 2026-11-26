@@ -122,7 +122,7 @@ function AdminPatientDetailsPage() {
     if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) {
       return fileUrl
     }
-    return `http://localhost:5000/api/labs${fileUrl}`
+    return `/api/labs${fileUrl}`
   }
 
   const calculateAge = (birthDate) => {

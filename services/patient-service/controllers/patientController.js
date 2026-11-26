@@ -37,12 +37,20 @@ exports.createPatient = async (req, res) => {
       }
     })
 
-    await axios.post("http://auth-service:5001/auth/internal/create-user", {
-      email,
-      password,
-      role: "PATIENT",
-      reference_id: patient.id
-    })
+    await axios.post(
+      `${process.env.AUTH_SERVICE_URL}/auth/internal/create-user`,
+      {
+        email,
+        password,
+        role: "PATIENT",
+        reference_id: patient.id
+      },
+      {
+        headers: {
+          Authorization: req.headers.authorization
+        }
+      }
+    )
 
     res.json(patient)
   } catch (error) {

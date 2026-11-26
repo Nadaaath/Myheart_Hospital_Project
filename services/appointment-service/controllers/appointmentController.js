@@ -36,13 +36,13 @@ exports.createAppointment = async (req, res) => {
     })
     // get price from catalog service
     const catalogResponse = await axios.get(
-      `http://catalog-service:5008/services/${service_id}`
+      `${process.env.CATALOG_SERVICE_URL}/services/${service_id}`
     )
 
     const price = catalogResponse.data.price
 
     // create billing
-    await axios.post("http://billing-service:5007/billing", {
+    await axios.post(`${process.env.BILLING_SERVICE_URL}/billing`, {
 
       appointment_id: appointment.id,
       patient_id: patient_id,

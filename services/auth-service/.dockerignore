@@ -1,3 +1,12 @@
 node_modules
 npm-debug.log
 .env
+.git
+.env.
+dist
+coverage
+.env.*
+*.log
+npm-debug.log*
+.vscode
+.idea

@@ -171,7 +171,7 @@ function AdminLabsPage() {
       return fileUrl
     }
 
-    return `http://localhost:5000/api/labs${fileUrl}`
+    return `/api/labs${fileUrl}`
   }
 
   const hero = (

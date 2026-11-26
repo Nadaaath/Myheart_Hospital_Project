@@ -6,6 +6,14 @@ const patientRoutes = require("./routes/patientRoutes")
 
 const app = express()
 
+app.get("/healthz", (req, res) => {
+    res.status(200).json({
+        status: "ok",
+        service: "patient-service"
+    })
+})
+
+
 app.use(cors())
 app.use(express.json())
 

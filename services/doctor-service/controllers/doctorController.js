@@ -25,12 +25,20 @@ exports.createDoctor = async (req, res) => {
       }
     })
 
-    await axios.post("http://auth-service:5001/auth/internal/create-user", {
-      email,
-      password,
-      role: "DOCTOR",
-      reference_id: doctor.id
-    })
+    await axios.post(
+      `${process.env.AUTH_SERVICE_URL}/auth/internal/create-user`,
+      {
+        email,
+        password,
+        role: "DOCTOR",
+        reference_id: doctor.id
+      },
+      {
+        headers: {
+          Authorization: req.headers.authorization
+        }
+      }
+    )
 
     res.json(doctor)
   } catch (error) {

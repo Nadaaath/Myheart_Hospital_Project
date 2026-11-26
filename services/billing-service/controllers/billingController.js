@@ -9,7 +9,7 @@ exports.createInvoice = async (req, res) => {
 
     // ask catalog for the resolved final price
     const priceResponse = await axios.get(
-      `http://catalog-service:5008/services/${service_id}/price`
+      `${process.env.CATALOG_SERVICE_URL}/services/${service_id}/price`
     )
 
     const finalPrice = priceResponse.data.price

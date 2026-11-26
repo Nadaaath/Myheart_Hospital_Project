@@ -6,6 +6,14 @@ const billingRoutes = require("./routes/billingRoutes")
 
 const app = express()
 
+app.get("/healthz", (req, res) => {
+    res.status(200).json({
+        status: "ok",
+        service: "billing-service"
+    })
+})
+
+
 app.use(cors())
 app.use(express.json())
 

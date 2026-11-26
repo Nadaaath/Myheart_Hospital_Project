@@ -8,6 +8,14 @@ const labRoutes = require("./routes/labRoutes")
 
 const app = express()
 
+app.get("/healthz", (req, res) => {
+    res.status(200).json({
+        status: "ok",
+        service: "lab-service"
+    })
+})
+
+
 app.use(cors())
 app.use(express.json())
 app.use("/uploads", express.static(path.join(__dirname, "uploads")))

@@ -216,7 +216,7 @@ function DoctorLabsPage() {
     return fileUrl
   }
 
-  return `http://localhost:5000/api/labs${fileUrl}`
+  return `/api/labs${fileUrl}`
 }
 
   const formatLongDate = (date) => {

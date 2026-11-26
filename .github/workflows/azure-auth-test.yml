@@ -1,0 +1,49 @@
+name: Azure OIDC Authentication Test
+
+on:
+  push:
+    branches:
+      - feat/azure-container-apps
+    paths:
+      - ".github/workflows/azure-auth-test.yml"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  azure-authentication:
+    name: Validate Azure and ACR authentication
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Authenticate to Azure using OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify Azure authentication
+        run: |
+          az account show \
+            --query "{Subscription:name,IdentityType:user.type}" \
+            -o table
+
+          echo "[PASS] Azure OIDC authentication"
+
+      - name: Authenticate to Azure Container Registry
+        env:
+          ACR_NAME: ${{ vars.ACR_NAME }}
+        run: |
+          az acr login --name "$ACR_NAME"
+
+          echo "[PASS] ACR authentication"
+
+      - name: Cleanup registry authentication
+        if: always()
+        env:
+          ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+        run: docker logout "$ACR_LOGIN_SERVER"
